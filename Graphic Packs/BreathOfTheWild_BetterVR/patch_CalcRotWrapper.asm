@@ -6,6 +6,8 @@ moduleMatches = 0x6267BFD0
 storeLR:
 .int 0
 
+storeR0:
+.int 0
 storeR1:
 .int 0
 storeR2:
@@ -13,6 +15,16 @@ storeR2:
 storeR3:
 .int 0
 storeR4:
+.int 0
+storeR5:
+.int 0
+storeR6:
+.int 0
+storeR8:
+.int 0
+storeR9:
+.int 0
+storeR11:
 .int 0
 storeR31:
 .int 0
@@ -64,6 +76,8 @@ mflr r7
 lis r10, storeLR@ha
 stw r7, storeLR@l(r10)
 
+lis r10, storeR0@ha
+stw r0, storeR0@l(r10)
 lis r10, storeR1@ha
 stw r1, storeR1@l(r10)
 lis r10, storeR2@ha
@@ -72,6 +86,16 @@ lis r10, storeR3@ha
 stw r3, storeR3@l(r10)
 lis r10, storeR4@ha
 stw r4, storeR4@l(r10)
+lis r10, storeR5@ha
+stw r5, storeR5@l(r10)
+lis r10, storeR6@ha
+stw r6, storeR6@l(r10)
+lis r10, storeR8@ha
+stw r8, storeR8@l(r10)
+lis r10, storeR9@ha
+stw r9, storeR9@l(r10)
+lis r10, storeR11@ha
+stw r11, storeR11@l(r10)
 lis r10, storeR31@ha
 stw r31, storeR31@l(r10)
 
@@ -110,6 +134,8 @@ lis r10, storeLR@ha
 lwz r7, storeLR@l(r10)
 mtlr r7
 
+lis r10, storeR0@ha
+lwz r0, storeR0@l(r10)
 lis r10, storeR1@ha
 lwz r1, storeR1@l(r10)
 lis r10, storeR2@ha
@@ -118,6 +144,16 @@ lis r10, storeR3@ha
 lwz r3, storeR3@l(r10)
 lis r10, storeR4@ha
 lwz r4, storeR4@l(r10)
+lis r10, storeR5@ha
+lwz r5, storeR5@l(r10)
+lis r10, storeR6@ha
+lwz r6, storeR6@l(r10)
+lis r10, storeR8@ha
+lwz r8, storeR8@l(r10)
+lis r10, storeR9@ha
+lwz r9, storeR9@l(r10)
+lis r10, storeR11@ha
+lwz r11, storeR11@l(r10)
 lis r10, storeR31@ha
 lwz r31, storeR31@l(r10)
 

@@ -38,3 +38,5 @@ packages/
 OpenXR/Debug/
 
 .vs/
+
+OpenXR/BotW-OpenXR-App.vcxproj.user

@@ -27,9 +27,9 @@ float reverseFloatEndianess(float inFloat) {
 }
 
 // Development Mode Selector
-#define GFX_PACK_PASSTHROUGH 0      // Use this with the BetterVR graphic pack. Instead of precalculating it, the app will just act as a way to easily 
-#define APP_CALC_CONVERT 1          // Use this with the PrecalcVR graphic pack. Used as an intermediary for converting the library-dependent code into native graphic pack code.
-#define APP_CALC_LIBRARY 2          // Use this with the PrecalcVR graphic pack. Used for easily testing code using libraries.
+#define GFX_PACK_PASSTHROUGH 0      // Used to make this app as a way to asynchronously feed headset data to the graphic pack which will then calculate the headset position each frame.
+#define APP_CALC_CONVERT 1          // Used as an intermediary for converting the library-dependent code into native graphic pack code.
+#define APP_CALC_LIBRARY 2          // Used for easily testing code using libraries.
 
 #define CALC_MODE APP_CALC_LIBRARY
 
@@ -163,6 +163,7 @@ void SetBotWPositions(XrView leftScreen, XrView rightScreen) {
             baseAddress = NULL;
             vrAddress = NULL;
             retryFindingCemu = 0;
+            hookStatus = HOOK_MODE::DISABLED;
             return;
         }
 
@@ -171,7 +172,7 @@ void SetBotWPositions(XrView leftScreen, XrView rightScreen) {
         ReadProcessMemory(cemuHandle, (void*)(baseAddress + vrAddress), (void*)&hookStatus, sizeof(HOOK_MODE), &writtenSize);
         inputCamera = {};
 
-        if (hookStatus == DISABLED) {
+        if (hookStatus == HOOK_MODE::DISABLED) {
             cemuHWND = NULL;
             cemuProcessID = NULL;
             cemuHandle = NULL;
@@ -181,8 +182,8 @@ void SetBotWPositions(XrView leftScreen, XrView rightScreen) {
             retryFindingCemu = 0;
             return;
         }
-        else if (hookStatus == GFX_PACK_ENABLED || hookStatus == BOTH_ENABLED_GFX_CALC) {
-            inputCamera.status = BOTH_ENABLED_GFX_CALC;
+        else if (hookStatus == HOOK_MODE::GFX_PACK_ENABLED || hookStatus == HOOK_MODE::BOTH_ENABLED_GFX_CALC) {
+            inputCamera.status = HOOK_MODE::BOTH_ENABLED_GFX_CALC;
             inputCamera.headsetQuaternion.x = middleScreen.orientation.x;
             inputCamera.headsetQuaternion.y = middleScreen.orientation.y;
             inputCamera.headsetQuaternion.z = middleScreen.orientation.z;
@@ -193,7 +194,7 @@ void SetBotWPositions(XrView leftScreen, XrView rightScreen) {
         }
 
         reverseInputBufferEndianess(&inputCamera);
-        WriteProcessMemory(cemuHandle, (void*)(baseAddress + vrAddress), (const void*)&cameraData, sizeof(inputDataBuffer), &writtenSize);
+        WriteProcessMemory(cemuHandle, (void*)(baseAddress + vrAddress), (const void*)&inputCamera, sizeof(inputDataBuffer), &writtenSize);
 #elif CALC_MODE == APP_CALC_CONVERT || CALC_MODE == APP_CALC_LIBRARY
         ReadProcessMemory(cemuHandle, (void*)(baseAddress + vrAddress), (void*)&hookStatus, sizeof(HOOK_MODE), &writtenSize);
 
@@ -244,14 +245,24 @@ void SetBotWPositions(XrView leftScreen, XrView rightScreen) {
             float newRotY = 0.0f;
             float newRotZ = 0.0f;
 
-            const float lookUpX = 0.0f;
-            const float lookUpY = 1.0f;
-            const float lookUpZ = 0.0f;
+            // Check if calculation should be done
+            if (oldTargetX == 0.0f && oldTargetY == 0.0f && oldTargetZ == 0.0f) {
+                newPosX = oldPosX;
+                newPosY = oldPosY;
+                newPosZ = oldPosZ;
+                newTargetX = oldTargetX;
+                newTargetY = oldTargetY;
+                newTargetZ = oldTargetZ;
+                newRotX = 0.0f;
+                newRotY = 1.0f;
+                newRotZ = 0.0f;
+                return;
+            }
 
             // Calculate direction vector by subtraction
-            float directionX = targetX - posX;
-            float directionY = targetY - posY;
-            float directionZ = targetZ - posZ;
+            float directionX = oldTargetX - oldPosX;
+            float directionY = oldTargetY - oldPosY;
+            float directionZ = oldTargetZ - oldPosZ;
 
             // Normalize forward/direction vector
             float directionLength = sqrtf(directionX * directionX + directionY * directionY + directionZ * directionZ);
@@ -266,6 +277,9 @@ void SetBotWPositions(XrView leftScreen, XrView rightScreen) {
             viewMatrix[2][2] = -directionZ;
 
             // Cross product to get right row
+            float lookUpX = 0.0f;
+            float lookUpY = 1.0f;
+            float lookUpZ = 0.0f;
             float rightX = lookUpY * viewMatrix[2][2] - viewMatrix[2][1] * lookUpZ;
             float rightY = lookUpZ * viewMatrix[2][0] - viewMatrix[2][2] * lookUpX;
             float rightZ = lookUpX * viewMatrix[2][1] - viewMatrix[2][0] * lookUpY;
@@ -366,18 +380,18 @@ void SetBotWPositions(XrView leftScreen, XrView rightScreen) {
             newViewMatrix[2][2] = 1.0f - 2.0f * (qxx + qyy);
 
             // Change camera variables
-            float distance = sqrtf(((targetX - posX) * (targetX - posX)) + ((targetY - posY) * (targetY - posY)) + ((targetZ - posZ) * (targetZ - posZ)));
+            float distance = sqrtf(((oldTargetX - oldPosX) * (oldTargetX - oldPosX)) + ((oldTargetY - oldPosY) * (oldTargetY - oldPosY)) + ((oldTargetZ - oldPosZ) * (oldTargetZ - oldPosZ)));
             float targetVecX = (newViewMatrix[2][0] * -1.0f) * distance;
             float targetVecY = (newViewMatrix[2][1] * -1.0f) * distance;
             float targetVecZ = (newViewMatrix[2][2] * -1.0f) * distance;
 
-            newTargetX = posX + targetVecX;
-            newTargetY = posY + targetVecY;
-            newTargetZ = posZ + targetVecZ;
+            newTargetX = oldPosX + targetVecX;
+            newTargetY = oldPosY + targetVecY;
+            newTargetZ = oldPosZ + targetVecZ;
 
-            newPosX = posX - (targetVecX * 0.0f);
-            newPosY = posY - (targetVecY * 0.0f);
-            newPosZ = posZ - (targetVecZ * 0.0f);
+            newPosX = oldPosX - (targetVecX * 0.0f);
+            newPosY = oldPosY - (targetVecY * 0.0f);
+            newPosZ = oldPosZ - (targetVecZ * 0.0f);
 
             newRotX = newViewMatrix[1][0];
             newRotY = newViewMatrix[1][1];
