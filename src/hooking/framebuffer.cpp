@@ -55,6 +55,8 @@ void VkDeviceOverrides::CmdClearColorImage(const vkroots::VkDeviceDispatch* pDis
 
             capture.sharedTextures[OpenXR::EyeSide::LEFT] = std::make_unique<SharedTexture>(capture.foundSize.width, capture.foundSize.height, capture.format, D3D12Utils::ToDXGIFormat(capture.format));
             capture.sharedTextures[OpenXR::EyeSide::RIGHT] = std::make_unique<SharedTexture>(capture.foundSize.width, capture.foundSize.height, capture.format, D3D12Utils::ToDXGIFormat(capture.format));
+            capture.sharedTextures[OpenXR::EyeSide::LEFT]->d3d12GetTexture()->SetName(std::format(L"CaptureTexture #{} - Left", captureIdx).c_str());
+            capture.sharedTextures[OpenXR::EyeSide::RIGHT]->d3d12GetTexture()->SetName(std::format(L"captureTexture #{} - Right", captureIdx).c_str());
             imageResolutions.erase(it);
             foundResolutions--;
             Log::print("Found capture texture {}: res={}x{}, format={}", captureIdx, capture.foundSize.width, capture.foundSize.height, capture.format);

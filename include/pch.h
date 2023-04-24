@@ -57,6 +57,13 @@ struct data_VRCameraIn {
     float fov;
 };
 
+struct data_VRProjectionMatrixOut {
+    float aspectRatio;
+    float fovY;
+    float offsetX;
+    float offsetY;
+};
+
 struct data_VRCameraOut {
     float posX;
     float posY;
@@ -68,7 +75,6 @@ struct data_VRCameraOut {
     float rotY;
     float rotZ;
     float fov;
-    float aspectRatio;
 };
 
 #include "utils/logger.h"

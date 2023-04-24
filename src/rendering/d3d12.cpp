@@ -5,11 +5,11 @@
 
 #include "shader.h"
 
-#undef _DEBUG
+#define ENABLE_VALIDATION_LAYER FALSE
 
 RND_D3D12::RND_D3D12() {
     UINT dxgiFactoryFlags = 0;
-#ifdef _DEBUG
+#if ENABLE_VALIDATION_LAYER
     ComPtr<ID3D12Debug> debugController0;
     ComPtr<ID3D12Debug1> debugController1;
     D3D12GetDebugInterface(IID_PPV_ARGS(&debugController0));
@@ -39,7 +39,7 @@ RND_D3D12::RND_D3D12() {
 
     checkHResult(D3D12CreateDevice(dxgiAdapter.Get(), VRManager::instance().XR->m_capabilities.minFeatureLevel, IID_PPV_ARGS(&m_device)), "Failed to create D3D12 device!");
 
-#ifdef _DEBUG
+#if ENABLE_VALIDATION_LAYER
     // Disable specific validation messages to hide spam caused by SteamVR
     ComPtr<ID3D12InfoQueue> pInfoQueue;
     checkHResult(m_device->QueryInterface(IID_PPV_ARGS(&pInfoQueue)), "Failed to get D3D12 info queue!");
@@ -74,8 +74,8 @@ RND_D3D12::~RND_D3D12() {
 
 RND_D3D12::PresentPipeline::PresentPipeline() {
     // This needs to know the format of the swapchain images, thus needs to wait until the swapchain images are created
-    m_vertexShader = D3D12Utils::CompileShader(shaderHLSL, "VSMain", "vs_5_1");
-    m_pixelShader = D3D12Utils::CompileShader(shaderHLSL, "PSMain", "ps_5_1");
+    m_vertexShader = D3D12Utils::CompileShader(presentHLSL, "VSMain", "vs_5_1");
+    m_pixelShader = D3D12Utils::CompileShader(presentHLSL, "PSMain", "ps_5_1");
 
     auto createSignature = [this]() {
         // clang-format off
@@ -105,7 +105,7 @@ RND_D3D12::PresentPipeline::PresentPipeline() {
                     .ShaderRegister = 1,
                     .RegisterSpace = 0
                 },
-                .ShaderVisibility = D3D12_SHADER_VISIBILITY_VERTEX
+                .ShaderVisibility = D3D12_SHADER_VISIBILITY_ALL
             }
         };
         // clang-format on
@@ -211,6 +211,34 @@ void RND_D3D12::PresentPipeline::BindTarget(uint32_t targetIdx, ID3D12Resource* 
     }
 }
 
+void RND_D3D12::PresentPipeline::BindSettings(float screenWidth, float screenHeight) {
+    ComPtr<ID3D12Resource> newSettingsStaging;
+    ComPtr<ID3D12CommandAllocator> newSettingsAllocator;
+    {
+        ID3D12Device* device = VRManager::instance().D3D12->GetDevice();
+        ID3D12CommandQueue* queue = VRManager::instance().D3D12->GetCommandQueue();
+        device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&newSettingsAllocator));
+        RND_D3D12::CommandContext<true> uploadBufferContext(device, queue, newSettingsAllocator.Get(), [this, device, &newSettingsStaging, screenWidth, screenHeight](ID3D12GraphicsCommandList* cmdList) {
+            m_settingsBuffer = D3D12Utils::CreateConstantBuffer(device, D3D12_HEAP_TYPE_DEFAULT, sizeof(presentSettings));
+
+            newSettingsStaging = D3D12Utils::CreateConstantBuffer(device, D3D12_HEAP_TYPE_UPLOAD, sizeof(presentSettings));
+            void* data;
+            const D3D12_RANGE readRange = { .Begin = 0, .End = 0 };
+            checkHResult(newSettingsStaging->Map(0, &readRange, &data), "Failed to map memory for screen indices buffer!");
+            presentSettings settings = {
+                .renderWidth = screenWidth,
+                .renderHeight = screenHeight,
+                .swapchainWidth = screenWidth,
+                .swapchainHeight = screenHeight,
+            };
+            memcpy(data, &settings, sizeof(presentSettings));
+            newSettingsStaging->Unmap(0, nullptr);
+
+            cmdList->CopyBufferRegion(m_settingsBuffer.Get(), 0, newSettingsStaging.Get(), 0, sizeof(presentSettings));
+        });
+    }
+}
+
 void RND_D3D12::PresentPipeline::RecreatePipeline(uint32_t targetIdx, DXGI_FORMAT targetFormat) {
     m_targetFormats[targetIdx] = targetFormat;
 
@@ -299,6 +327,10 @@ void RND_D3D12::PresentPipeline::Render(ID3D12GraphicsCommandList* cmdList, ID3D
 
     D3D12_RECT scissorRect = { 0, 0, (LONG)swapchain->GetDesc().Width, (LONG)swapchain->GetDesc().Height };
     cmdList->RSSetScissorRects(1, &scissorRect);
+
+    // set settings
+    checkAssert(m_settingsBuffer != nullptr, "Failed to present texture since graphics pipeline hasn't bound some settings yet!");
+    cmdList->SetGraphicsRootConstantBufferView(1, m_settingsBuffer->GetGPUVirtualAddress());
 
     // set shared texture
     ID3D12DescriptorHeap* heaps[] = { m_attachmentHeap.Get() };

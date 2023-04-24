@@ -20,6 +20,7 @@ public:
 
         osLib_registerHLEFunction("coreinit", "hook_UpdateSettings", &hook_UpdateSettings);
         osLib_registerHLEFunction("coreinit", "hook_UpdateCamera", &hook_UpdateCamera);
+        osLib_registerHLEFunction("coreinit", "hook_UpdateProjectionMatrix", &hook_UpdateProjectionMatrix);
         //osLib_registerHLEFunction("coreinit", "hook_UpdateInterface", &hook_UpdateInterface);
     };
     ~CemuHooks() {
@@ -36,6 +37,7 @@ private:
     static uint64_t s_memoryBaseAddress;
 
     static void hook_UpdateSettings(PPCInterpreter_t* hCPU);
+    static void hook_UpdateProjectionMatrix(PPCInterpreter_t* hCPU);
     static void hook_UpdateCamera(PPCInterpreter_t* hCPU);
 
 #pragma region MEMORY_POINTERS

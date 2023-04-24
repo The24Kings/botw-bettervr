@@ -40,6 +40,7 @@ public:
 
         void BindAttachment(uint32_t attachmentIdx, ID3D12Resource* srcTexture, DXGI_FORMAT overwriteFormat = DXGI_FORMAT_UNKNOWN);
         void BindTarget(uint32_t targetIdx, ID3D12Resource* dstTexture, DXGI_FORMAT overwriteFormat = DXGI_FORMAT_UNKNOWN);
+        void BindSettings(float screenWidth, float screenHeight);
         void Render(ID3D12GraphicsCommandList* commandList, ID3D12Resource* swapchain);
 
     private:
@@ -50,6 +51,8 @@ public:
 
         ComPtr<ID3D12Resource> m_screenIndicesBuffer;
         D3D12_INDEX_BUFFER_VIEW m_screenIndicesView = {};
+
+        ComPtr<ID3D12Resource> m_settingsBuffer;
 
         ComPtr<ID3D12RootSignature> m_signature;
         ComPtr<ID3D12PipelineState> m_pipelineState;

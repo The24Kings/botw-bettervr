@@ -1,4 +1,4 @@
-constexpr char shaderHLSL[] = R"_(
+constexpr char presentHLSL[] = R"_(
 struct VSInput {
     uint instId : SV_InstanceID;
     uint vertexId : SV_VertexID;
@@ -9,40 +9,50 @@ struct PSInput {
     float2 uv : TEXCOORD;
 };
 
+cbuffer g_settings : register(b1) {
+    float renderWidth;
+    float renderHeight;
+    float swapchainWidth;
+    float swapchainHeight;
+};
+
 Texture2D g_texture : register(t0);
 SamplerState g_sampler : register(s0);
 
 PSInput VSMain(VSInput input) {
 	PSInput output;
 	output.uv = float2(input.vertexId%2, input.vertexId%4/2);
-	output.position = float4((output.uv.x-0.5f)*2.0, -(output.uv.y-0.5f)*2, 0.0, 1.0);
+
+    //float swapchainAspectRatio = swapchainWidth / swapchainHeight;
+	output.position = float4((output.uv.x-0.5f)*2.0f, -(output.uv.y-0.5f)*2.0f, 0.0, 1.0);
+
 	return output;
 }
 
 float4 PSMain(PSInput input) : SV_TARGET {
 	float4 renderColor = float4(0.0, 1.0, 1.0, 1.0);
 	float2 samplePosition = input.uv;
-	samplePosition.x /= 2.0;
-    float4 sampledTexture = g_texture.Sample(g_sampler, samplePosition); // float4(input.uv.x, input.uv.y, 0.0, 1.0);
+
+    float4 sampledTexture = g_texture.Sample(g_sampler, samplePosition);
 	
 	return float4(sampledTexture.x, sampledTexture.y, sampledTexture.z, 1.0);
 }
 )_";
 
 
-struct constantBufferShader {
+struct presentSettings {
     float renderWidth;
     float renderHeight;
     float swapchainWidth;
     float swapchainHeight;
-    float eyeSeparation;
-    float showWholeScreen;  // this mode could be used to show each display a part of the screen
-    float showSingleScreen; // this mode shows the same picture in each eye
-    float singleScreenScale;
-    float zoomOutLevel;
-    float gap0;
-    float gap1;
-    float gap2;
+//    float eyeSeparation;
+//    float showWholeScreen;  // this mode could be used to show each display a part of the screen
+//    float showSingleScreen; // this mode shows the same picture in each eye
+//    float singleScreenScale;
+//    float zoomOutLevel;
+//    float gap0;
+//    float gap1;
+//    float gap2;
 };
 
 // clang-format off

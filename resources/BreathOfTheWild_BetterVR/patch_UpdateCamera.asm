@@ -41,8 +41,6 @@ newRotZ:
 .float 0.0
 newFOV:
 .float 0.0
-newAspectRatio:
-.float 0.872665
 
 CAM_OFFSET_POS = 0x5C0
 CAM_OFFSET_TARGET = 0x5CC
@@ -144,9 +142,3 @@ stfs f10, 0x20(r31)
 blr
 
 0x02E57FF0 = bla changeCameraRotation
-
-
-#0x0386D010 = lis r28, newAspectRatio@ha
-#0x0386D014 = lfs f12, newAspectRatio@l(r28)
-#0x0386D018 = b continueFromChangeAspectRatio
-#0x0386D024 = continueFromChangeAspectRatio:

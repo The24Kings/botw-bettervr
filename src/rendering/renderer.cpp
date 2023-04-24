@@ -10,6 +10,8 @@ RND_Renderer::RND_Renderer(XrSession xrSession): m_session(xrSession) {
 
     m_presentPipelines[OpenXR::EyeSide::LEFT] = std::make_unique<RND_D3D12::PresentPipeline>();
     m_presentPipelines[OpenXR::EyeSide::RIGHT] = std::make_unique<RND_D3D12::PresentPipeline>();
+    m_presentPipelines[OpenXR::EyeSide::LEFT]->BindSettings((float)VRManager::instance().XR->GetSwapchain(OpenXR::EyeSide::LEFT)->GetWidth(), (float)VRManager::instance().XR->GetSwapchain(OpenXR::EyeSide::LEFT)->GetHeight());
+    m_presentPipelines[OpenXR::EyeSide::RIGHT]->BindSettings((float)VRManager::instance().XR->GetSwapchain(OpenXR::EyeSide::RIGHT)->GetWidth(), (float)VRManager::instance().XR->GetSwapchain(OpenXR::EyeSide::RIGHT)->GetHeight());
 }
 
 RND_Renderer::~RND_Renderer() {
@@ -74,13 +76,6 @@ void RND_Renderer::EndFrame() {
                 });
             }
 
-            // float leftHalfFOV = glm::degrees(frameViews[0].fov.angleLeft);
-            // float rightHalfFOV = glm::degrees(frameViews[0].fov.angleRight);
-            // float upHalfFOV = glm::degrees(frameViews[0].fov.angleUp);
-            // float downHalfFOV = glm::degrees(frameViews[0].fov.angleDown);
-            //
-            // float horizontalHalfFOV = (float)(abs(frameViews[0].fov.angleLeft) + abs(frameViews[0].fov.angleRight)) * 0.5f;
-            // float verticalHalfFOV = (float)(abs(frameViews[0].fov.angleUp) + abs(frameViews[0].fov.angleDown)) * 0.5f;
             m_frameProjectionViews[i].pose = view.pose;
             m_frameProjectionViews[i].fov = view.fov;
             m_frameProjectionViews[i].subImage.swapchain = swapchain->GetHandle();
@@ -89,7 +84,7 @@ void RND_Renderer::EndFrame() {
         }
 
         frameRenderLayer.layerFlags = NULL;
-        frameRenderLayer.space = VRManager::instance().XR->m_headSpace;
+        frameRenderLayer.space = VRManager::instance().XR->m_stageSpace;
         frameRenderLayer.viewCount = (uint32_t)m_frameProjectionViews.size();
         frameRenderLayer.views = m_frameProjectionViews.data();
         m_layers.emplace_back(reinterpret_cast<XrCompositionLayerBaseHeader*>(&frameRenderLayer));
