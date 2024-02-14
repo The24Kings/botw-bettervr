@@ -196,6 +196,14 @@ void OpenXR::CreateActions() {
         grabActionInfo.subactionPaths = m_handPaths.data();
         checkXRResult(xrCreateAction(m_gameplayActionSet, &grabActionInfo, &m_grabAction), "Failed to create grab action!");
 
+        XrActionCreateInfo selectActionInfo = { XR_TYPE_ACTION_CREATE_INFO };
+        selectActionInfo.actionType = XR_ACTION_TYPE_BOOLEAN_INPUT;
+        strcpy_s(selectActionInfo.actionName, "select");
+        strcpy_s(selectActionInfo.localizedActionName, "Select");
+        selectActionInfo.countSubactionPaths = (uint32_t)m_handPaths.size();
+        selectActionInfo.subactionPaths = m_handPaths.data();
+        checkXRResult(xrCreateAction(m_gameplayActionSet, &selectActionInfo, &m_selectAction), "Failed to create select action!");
+
         XrActionCreateInfo moveActionInfo = { XR_TYPE_ACTION_CREATE_INFO };
         moveActionInfo.actionType = XR_ACTION_TYPE_VECTOR2F_INPUT;
         strcpy_s(moveActionInfo.actionName, "move");
@@ -214,7 +222,9 @@ void OpenXR::CreateActions() {
     }
 
     {
-        std::array<XrActionSuggestedBinding, 4> suggestedBindings = {
+        std::array<XrActionSuggestedBinding, 6> suggestedBindings = {
+            XrActionSuggestedBinding{ .action = m_selectAction, .binding = GetXRPath("/user/hand/right/input/menu/click") },
+            XrActionSuggestedBinding{ .action = m_selectAction, .binding = GetXRPath("/user/hand/left/input/menu/click") },
             XrActionSuggestedBinding{ .action = m_grabAction, .binding = GetXRPath("/user/hand/right/input/select/click") },
             XrActionSuggestedBinding{ .action = m_grabAction, .binding = GetXRPath("/user/hand/left/input/select/click") },
             XrActionSuggestedBinding{ .action = m_poseAction, .binding = GetXRPath("/user/hand/right/input/grip/pose") },
@@ -228,9 +238,11 @@ void OpenXR::CreateActions() {
     }
 
     {
-        std::array<XrActionSuggestedBinding, 6> suggestedBindings = {
-            XrActionSuggestedBinding{ .action = m_grabAction, .binding = GetXRPath("/user/hand/right/input/trigger/value") },
-            XrActionSuggestedBinding{ .action = m_grabAction, .binding = GetXRPath("/user/hand/left/input/trigger/value") },
+        std::array<XrActionSuggestedBinding, 8> suggestedBindings = {
+            XrActionSuggestedBinding{ .action = m_selectAction, .binding = GetXRPath("/user/hand/right/input/trigger/value") },
+            XrActionSuggestedBinding{ .action = m_selectAction, .binding = GetXRPath("/user/hand/left/input/trigger/value") },
+            XrActionSuggestedBinding{ .action = m_grabAction, .binding = GetXRPath("/user/hand/left/input/squeeze/value") },
+            XrActionSuggestedBinding{ .action = m_grabAction, .binding = GetXRPath("/user/hand/left/input/squeeze/value") },
             XrActionSuggestedBinding{ .action = m_moveAction, .binding = GetXRPath("/user/hand/right/input/thumbstick") },
             XrActionSuggestedBinding{ .action = m_moveAction, .binding = GetXRPath("/user/hand/left/input/thumbstick") },
             XrActionSuggestedBinding{ .action = m_poseAction, .binding = GetXRPath("/user/hand/right/input/grip/pose") },
@@ -244,9 +256,11 @@ void OpenXR::CreateActions() {
     }
 
     {
-        std::array<XrActionSuggestedBinding, 6> suggestedBindings = {
-            XrActionSuggestedBinding{ .action = m_grabAction, .binding = GetXRPath("/user/hand/right/input/trigger/value") },
-            XrActionSuggestedBinding{ .action = m_grabAction, .binding = GetXRPath("/user/hand/left/input/trigger/value") },
+        std::array<XrActionSuggestedBinding, 8> suggestedBindings = {
+            XrActionSuggestedBinding{ .action = m_selectAction, .binding = GetXRPath("/user/hand/right/input/trigger/value") },
+            XrActionSuggestedBinding{ .action = m_selectAction, .binding = GetXRPath("/user/hand/left/input/trigger/value") },
+            XrActionSuggestedBinding{ .action = m_grabAction, .binding = GetXRPath("/user/hand/left/input/squeeze/click") },
+            XrActionSuggestedBinding{ .action = m_grabAction, .binding = GetXRPath("/user/hand/left/input/squeeze/click") },
             XrActionSuggestedBinding{ .action = m_moveAction, .binding = GetXRPath("/user/hand/right/input/thumbstick") },
             XrActionSuggestedBinding{ .action = m_moveAction, .binding = GetXRPath("/user/hand/left/input/thumbstick") },
             XrActionSuggestedBinding{ .action = m_poseAction, .binding = GetXRPath("/user/hand/right/input/grip/pose") },
@@ -287,6 +301,12 @@ void OpenXR::UpdateActions(XrTime predictedFrameTime) {
         getGrabInfo.subactionPath = m_handPaths[side];
         m_input.hands[side].grab = { XR_TYPE_ACTION_STATE_BOOLEAN };
         checkXRResult(xrGetActionStateBoolean(m_session, &getGrabInfo, &m_input.hands[side].grab), "Failed to get grab action value!");
+
+        XrActionStateGetInfo getSelectInfo = { XR_TYPE_ACTION_STATE_GET_INFO };
+        getSelectInfo.action = m_selectAction;
+        getSelectInfo.subactionPath = m_handPaths[side];
+        m_input.hands[side].select = { XR_TYPE_ACTION_STATE_BOOLEAN };
+        checkXRResult(xrGetActionStateBoolean(m_session, &getSelectInfo, &m_input.hands[side].select), "Failed to get select action value!");
 
         XrActionStateGetInfo getPoseInfo = { XR_TYPE_ACTION_STATE_GET_INFO };
         getPoseInfo.action = m_poseAction;
@@ -392,6 +412,9 @@ void OpenXR::ProcessEvents() {
                 break;
             case XR_TYPE_EVENT_DATA_EVENTS_LOST:
                 Log::print("OpenXR has indicated that events are being lost!");
+                break;
+            case XR_TYPE_EVENT_DATA_INTERACTION_PROFILE_CHANGED:
+                Log::print("OpenXR has indicated that the interaction profile has changed!");
                 break;
             default:
                 Log::print("OpenXR has indicated that an unknown event with type {} has occurred!", std::to_underlying(eventData.type));
