@@ -4,30 +4,17 @@
 struct ActorWiiU {
     uint32_t vtable;
     BEType<uint32_t> baseProcPtr;
-    uint8_t unk_08[0x1F8 - 0x08];
-    BEMatrix34 mtx;
-    uint32_t physicsMtxPtr;
-    BEMatrix34 homeMtx;
-    Vec3 velocity;
-    Vec3 angularVelocity;
-    Vec3 scale;
-};
-
-struct ActorWiiUOrig {
-    uint32_t vtable; // 0x00
-    BEType<uint32_t> baseProcPtr; // 0x04
     uint8_t unk_08[0xF4 - 0x08];
     uint32_t physicsMainBodyPtr; // 0xF4
     uint32_t physicsTgtBodyPtr; // 0xF8
     uint8_t unk_FC[0x1F8 - 0xFC];
-    BEMatrix34 mtx; // 0x1F8
+    BEMatrix34 mtx;
     uint32_t physicsMtxPtr;
     BEMatrix34 homeMtx;
-    Vec3 velocity;
-    Vec3 angularVelocity;
-    Vec3 scale;
+    BEVec3 velocity;
+    BEVec3 angularVelocity;
+    BEVec3 scale;
 };
-
 
 std::vector<ActorWiiU> s_actors;
 std::vector<uint32_t> s_actorPtrs;

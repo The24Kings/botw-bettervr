@@ -31,28 +31,10 @@ enum VPADButtons : uint32_t {
     VPAD_STICK_L_EMULATION_DOWN   = 0x08000000,
 };
 
-struct BEVec2D {
-    BEType<float> x;
-    BEType<float> y;
-
-    BEVec2D() = default;
-    BEVec2D(float x, float y): x(x), y(y) {}
-    BEVec2D(BEType<float> x, BEType<float> y): x(x), y(y) {}
-};
-
-struct BEVec3D {
-    BEType<float> x;
-    BEType<float> y;
-    BEType<float> z;
-
-    BEVec3D() = default;
-    BEVec3D(float x, float y, float z): x(x), y(y), z(z) {}
-};
-
 struct BEDir {
-    BEVec3D x;
-    BEVec3D y;
-    BEVec3D z;
+    BEVec3 x;
+    BEVec3 y;
+    BEVec3 z;
 
     BEDir() = default;
 };
@@ -68,14 +50,14 @@ struct VPADStatus {
     BEType<uint32_t> hold;
     BEType<uint32_t> trig;
     BEType<uint32_t> release;
-    BEVec2D leftStick;
-    BEVec2D rightStick;
-    BEVec3D acc;
+    BEVec2 leftStick;
+    BEVec2 rightStick;
+    BEVec3 acc;
     BEType<float> accMagnitude;
     BEType<float> accAcceleration;
-    BEVec2D accXY;
-    BEVec3D gyroChange;
-    BEVec3D gyroOrientation;
+    BEVec2 accXY;
+    BEVec3 gyroChange;
+    BEVec3 gyroOrientation;
     int8_t vpadErr;
     uint8_t padding1[1];
     BETouchData tpData;
@@ -85,7 +67,7 @@ struct VPADStatus {
     BEDir dir;
     uint8_t headphoneStatus;
     uint8_t padding3[3];
-    BEVec3D magnet;
+    BEVec3 magnet;
     uint8_t slideVolume;
     uint8_t batteryLevel;
     uint8_t micStatus;

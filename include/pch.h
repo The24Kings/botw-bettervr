@@ -143,21 +143,6 @@ public:
     friend bool operator >=(const T& lhs, const BEType<T>& rhs) { return lhs >= swapEndianness(rhs.val); }
 };
 
-struct Matrix34 {
-    float x_x;
-    float y_x;
-    float z_x;
-    float pos_x;
-    float x_y;
-    float y_y;
-    float z_y;
-    float pos_y;
-    float x_z;
-    float y_z;
-    float z_z;
-    float pos_z;
-};
-
 struct BEMatrix34 {
     BEType<float> x_x;
     BEType<float> y_x;
@@ -173,10 +158,22 @@ struct BEMatrix34 {
     BEType<float> pos_z;
 };
 
-struct Vec3 {
-    float x;
-    float y;
-    float z;
+struct BEVec2 {
+    BEType<float> x;
+    BEType<float> y;
+
+    BEVec2() = default;
+    BEVec2(float x, float y): x(x), y(y) {}
+    BEVec2(BEType<float> x, BEType<float> y): x(x), y(y) {}
+};
+
+struct BEVec3 {
+    BEType<float> x;
+    BEType<float> y;
+    BEType<float> z;
+
+    BEVec3() = default;
+    BEVec3(float x, float y, float z): x(x), y(y), z(z) {}
 };
 
 struct data_VRSettingsIn {

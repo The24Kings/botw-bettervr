@@ -57,36 +57,6 @@ private:
 
     [[maybe_unused]] static void updateFrames();
 
-    static void writeMemoryBE(uint64_t offset, Matrix34* mtxPtr) {
-        writeMemoryBE(offset + offsetof(Matrix34, x_x), &mtxPtr->x_x);
-        writeMemoryBE(offset + offsetof(Matrix34, x_y), &mtxPtr->x_y);
-        writeMemoryBE(offset + offsetof(Matrix34, x_z), &mtxPtr->x_z);
-        writeMemoryBE(offset + offsetof(Matrix34, y_x), &mtxPtr->y_x);
-        writeMemoryBE(offset + offsetof(Matrix34, y_y), &mtxPtr->y_y);
-        writeMemoryBE(offset + offsetof(Matrix34, y_z), &mtxPtr->y_z);
-        writeMemoryBE(offset + offsetof(Matrix34, z_x), &mtxPtr->z_x);
-        writeMemoryBE(offset + offsetof(Matrix34, z_y), &mtxPtr->z_y);
-        writeMemoryBE(offset + offsetof(Matrix34, z_z), &mtxPtr->z_z);
-        writeMemoryBE(offset + offsetof(Matrix34, pos_x), &mtxPtr->pos_x);
-        writeMemoryBE(offset + offsetof(Matrix34, pos_y), &mtxPtr->pos_y);
-        writeMemoryBE(offset + offsetof(Matrix34, pos_z), &mtxPtr->pos_z);
-    }
-
-    static void readMemoryBE(uint64_t offset, Matrix34* mtxPtr) {
-        readMemoryBE(offset + offsetof(Matrix34, x_x), &mtxPtr->x_x);
-        readMemoryBE(offset + offsetof(Matrix34, x_y), &mtxPtr->x_y);
-        readMemoryBE(offset + offsetof(Matrix34, x_z), &mtxPtr->x_z);
-        readMemoryBE(offset + offsetof(Matrix34, y_x), &mtxPtr->y_x);
-        readMemoryBE(offset + offsetof(Matrix34, y_y), &mtxPtr->y_y);
-        readMemoryBE(offset + offsetof(Matrix34, y_z), &mtxPtr->y_z);
-        readMemoryBE(offset + offsetof(Matrix34, z_x), &mtxPtr->z_x);
-        readMemoryBE(offset + offsetof(Matrix34, z_y), &mtxPtr->z_y);
-        readMemoryBE(offset + offsetof(Matrix34, z_z), &mtxPtr->z_z);
-        readMemoryBE(offset + offsetof(Matrix34, pos_x), &mtxPtr->pos_x);
-        readMemoryBE(offset + offsetof(Matrix34, pos_y), &mtxPtr->pos_y);
-        readMemoryBE(offset + offsetof(Matrix34, pos_z), &mtxPtr->pos_z);
-    }
-
     template <typename T>
     static void writeMemoryBE(uint64_t offset, T* valuePtr) {
         *valuePtr = swapEndianness(*valuePtr);
