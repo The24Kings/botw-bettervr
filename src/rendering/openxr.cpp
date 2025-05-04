@@ -369,7 +369,7 @@ void OpenXR::CreateActions() {
     }
 }
 
-void OpenXR::UpdateActions(XrTime predictedFrameTime, bool inMenu) {
+std::optional<OpenXR::InputState> OpenXR::UpdateActions(XrTime predictedFrameTime, bool inMenu) {
     XrActiveActionSet activeActionSet = { (inMenu ? m_menuActionSet : m_gameplayActionSet), XR_NULL_PATH };
 
     XrActionsSyncInfo syncInfo = { XR_TYPE_ACTIONS_SYNC_INFO };
@@ -488,11 +488,7 @@ void OpenXR::UpdateActions(XrTime predictedFrameTime, bool inMenu) {
     }
 
     this->m_input.store(newState);
-}
-
-void OpenXR::UpdateTime(XrTime predictedDisplayTime) {
-    m_frameTimes[OpenXR::EyeSide::LEFT] = predictedDisplayTime;
-    m_frameTimes[OpenXR::EyeSide::RIGHT] = predictedDisplayTime;
+    return newState;
 }
 
 std::optional<XrSpaceLocation> OpenXR::UpdateSpaces(XrTime predictedDisplayTime) {

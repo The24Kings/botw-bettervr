@@ -50,7 +50,7 @@ void VkDeviceOverrides::CmdClearColorImage(const vkroots::VkDeviceDispatch* pDis
         const OpenXR::EyeSide side = pColor->float32[3] < 0.5f ? OpenXR::EyeSide::LEFT : OpenXR::EyeSide::RIGHT;
         checkAssert(captureIdx == 0 || captureIdx == 2, "Invalid capture index!");
 
-        Log::print("Clearing color image for {} layer for {} side ({})", captureIdx == 0 ? "3D" : "2D", side == OpenXR::EyeSide::LEFT ? "left" : "right", pColor->float32[3]);
+        Log::print("[VULKAN] Clearing color image for {} layer for {} side ({})", captureIdx == 0 ? "3D" : "2D", side == OpenXR::EyeSide::LEFT ? "left" : "right", pColor->float32[3]);
 
         auto* renderer = VRManager::instance().XR->GetRenderer();
         auto& layer3D = renderer->m_layer3D;
@@ -97,13 +97,14 @@ void VkDeviceOverrides::CmdClearColorImage(const vkroots::VkDeviceDispatch* pDis
             }
 
             if (image != s_curr3DColorImage) {
+                Log::print("[VULKAN] Color image is not the same as the current 3D color image! ({} != {})", (void*)image, (void*)s_curr3DColorImage);
                 const_cast<VkClearColorValue*>(pColor)[0] = { 0.0f, 0.0f, 0.0f, 0.0f };
                 return pDispatch->CmdClearColorImage(commandBuffer, image, imageLayout, pColor, rangeCount, pRanges);
             }
 
             if (layer3D->HasCopied(side)) {
                 // the color texture has already been copied to the layer
-                // Log::print("A color texture is already bound for the current frame!");
+                Log::print("[VULKAN] A color texture is already bound for the current frame!");
                 const_cast<VkClearColorValue*>(pColor)[0] = { 0.0f, 0.0f, 0.0f, 0.0f };
                 return pDispatch->CmdClearColorImage(commandBuffer, image, imageLayout, pColor, rangeCount, pRanges);
             }
@@ -118,9 +119,14 @@ void VkDeviceOverrides::CmdClearColorImage(const vkroots::VkDeviceDispatch* pDis
             //     return;
             // }
 
+            // this'll always
+            layer3D->PrepareRendering(side);
+
             // note: This uses vkCmdCopyImage to copy the image to an OpenXR-specific texture. s_activeCopyOperations queues a semaphore for the D3D12 side to wait on.
             SharedTexture* texture = layer3D->CopyColorToLayer(side, commandBuffer, image);
+            Log::print("[VULKAN] Waiting for {} side to be 0", side == OpenXR::EyeSide::LEFT ? "left" : "right");
             s_activeCopyOperations.emplace_back(commandBuffer, texture);
+            Log::print("[VULKAN] Signalling for {} side to be 1", side == OpenXR::EyeSide::LEFT ? "left" : "right");
             VulkanUtils::DebugPipelineBarrier(commandBuffer);
             VulkanUtils::TransitionLayout(commandBuffer, image, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_GENERAL);
 
@@ -151,8 +157,10 @@ void VkDeviceOverrides::CmdClearColorImage(const vkroots::VkDeviceDispatch* pDis
             }
 
             // only copy the first attempt at capturing when GX2ClearColor is called with this capture index since the game/Cemu clears the 2D layer twice
+            // Log::print("[VULKAN] Waiting for {} side to be 0", side == OpenXR::EyeSide::LEFT ? "left" : "right");
             SharedTexture* texture = layer2D->CopyColorToLayer(commandBuffer, image);
             s_activeCopyOperations.emplace_back(commandBuffer, texture);
+            // Log::print("[VULKAN] Signalling for {} side to be 1", side == OpenXR::EyeSide::LEFT ? "left" : "right");
 
             VulkanUtils::DebugPipelineBarrier(commandBuffer);
             VulkanUtils::TransitionLayout(commandBuffer, image, VK_IMAGE_LAYOUT_GENERAL, VK_IMAGE_LAYOUT_GENERAL);
@@ -343,12 +351,14 @@ VkResult VkDeviceOverrides::QueueSubmit(const vkroots::VkDeviceDispatch* pDispat
     }
 }
 
+OpenXR::EyeSide s_currentEye = OpenXR::EyeSide::LEFT;
 VkResult VkDeviceOverrides::QueuePresentKHR(const vkroots::VkDeviceDispatch* pDispatch, VkQueue queue, const VkPresentInfoKHR* pPresentInfo) {
     VRManager::instance().XR->ProcessEvents();
 
     // RND_Renderer* renderer = VRManager::instance().XR->GetRenderer();
     //
-    // Log::print("Presenting frame for {} side", s_currentEye == OpenXR::EyeSide::LEFT ? "left" : "right");
+    // Log::print("[VULKAN] Presenting frame for {} side", s_currentEye == OpenXR::EyeSide::LEFT ? "left" : "right");
+    s_currentEye = s_currentEye == OpenXR::EyeSide::LEFT ? OpenXR::EyeSide::RIGHT : OpenXR::EyeSide::LEFT;
 
     if (VRManager::instance().VK->m_imguiOverlay) {
         VRManager::instance().VK->m_imguiOverlay->BeginFrame();

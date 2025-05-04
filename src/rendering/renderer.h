@@ -15,9 +15,19 @@ public:
     explicit RND_Renderer(XrSession xrSession);
     ~RND_Renderer();
 
+    struct QueuedFrame {
+        XrTime predictedDisplayTime = 0;
+        std::vector<XrCompositionLayerBaseHeader*> compositionLayers;
+        // scope storage
+        XrCompositionLayerProjectionWithDepth temp_3dLayers;
+        XrCompositionLayerProjection temp_3dLayers2;
+        XrCompositionLayerQuad temp_2dLayers;
+    };
+
     void StartFrame();
-    void EndFrame();
-    std::optional<std::array<XrView, 2>> UpdatePoses(XrTime predictedDisplayTime);
+    void EndFrame(QueuedFrame& frame);
+    void PresentFrame(QueuedFrame frame);
+    std::optional<std::array<XrView, 2>> UpdateViews(XrTime predictedDisplayTime);
     std::optional<std::array<XrView, 2>> GetPoses() const { return m_currViews; }
     std::optional<XrFovf> GetFOV(OpenXR::EyeSide side) const { return m_currViews.transform([side](auto& views) { return views[side].fov; }); }
     std::optional<XrPosef> GetPose(OpenXR::EyeSide side) const { return m_currViews.transform([side](auto& views) { return views[side].pose; }); }
@@ -30,9 +40,10 @@ public:
         SharedTexture* CopyColorToLayer(OpenXR::EyeSide side, VkCommandBuffer copyCmdBuffer, VkImage image);
         SharedTexture* CopyDepthToLayer(OpenXR::EyeSide side, VkCommandBuffer copyCmdBuffer, VkImage image);
         bool HasCopied(OpenXR::EyeSide side) const { return m_copiedColor[side] && m_copiedDepth[side]; };
+        void PrepareRendering(OpenXR::EyeSide side);
         void StartRendering();
         void Render(OpenXR::EyeSide side);
-        const std::array<XrCompositionLayerProjectionView, 2>& FinishRendering();
+        XrCompositionLayerProjectionWithDepth FinishRendering();
 
         float GetAspectRatio(OpenXR::EyeSide side) const { return m_swapchains[side]->GetWidth() / (float)m_swapchains[side]->GetHeight(); }
 
@@ -42,10 +53,7 @@ public:
         std::array<std::unique_ptr<RND_D3D12::PresentPipeline<true>>, 2> m_presentPipelines;
         std::array<std::unique_ptr<SharedTexture>, 2> m_textures;
         std::array<std::unique_ptr<SharedTexture>, 2> m_depthTextures;
-        std::array<XrCompositionLayerProjectionView, 2> m_projectionViews = {};
-        std::array<XrCompositionLayerDepthInfoKHR, 2> m_projectionViewsDepthInfo = {};
 
-        std::array<XrTime, 2> m_predictedTimes = { 0, 0};
         std::array<std::atomic_bool, 2> m_copiedColor = { false, false };
         std::array<std::atomic_bool, 2> m_copiedDepth = { false, false };
     };

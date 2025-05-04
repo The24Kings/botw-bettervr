@@ -7,7 +7,7 @@ uint64_t CemuHooks::s_memoryBaseAddress = 0;
 std::atomic_uint32_t CemuHooks::s_framesSinceLastCameraUpdate = 0;
 
 void CemuHooks::hook_UpdateSettings(PPCInterpreter_t* hCPU) {
-    Log::print("Updated settings!");
+    // Log::print("Updated settings!");
     hCPU->instructionPointer = hCPU->sprNew.LR;
 
     updateFrames();

@@ -47,7 +47,7 @@ void CemuHooks::hook_GetRenderCamera(PPCInterpreter_t* hCPU) {
     readMemory(cameraIn, &camera);
 
     if (camera.pos.x.getLE() != 0.0f) {
-        // Log::print("[MODIFIED] Getting render camera (with LR: {:08X}): {}", hCPU->sprNew.LR, camera);
+        Log::print("[PPC] Getting render camera for {} side", cameraSide == OpenXR::EyeSide::LEFT ? "left" : "right");
 
         // in-game camera
         glm::mat3x4 originalMatrix = camera.mtx.getLEMatrix();
@@ -145,6 +145,7 @@ void CemuHooks::hook_GetRenderProjection(PPCInterpreter_t* hCPU) {
         BESeadPerspectiveProjection perspectiveProjection = {};
         readMemory(projectionIn, &perspectiveProjection);
         // Log::print("Render Proj. (LR: {:08X}): {}", hCPU->sprNew.LR, perspectiveProjection);
+        Log::print("[PPC] Getting render projection for {} side", side == OpenXR::EyeSide::LEFT ? "left" : "right");
 
         if (!VRManager::instance().XR->GetRenderer()->GetFOV(side).has_value()) {
             return;
@@ -183,13 +184,48 @@ void CemuHooks::hook_GetRenderProjection(PPCInterpreter_t* hCPU) {
     }
 }
 
+void CemuHooks::hook_OSReportToConsole(PPCInterpreter_t* hCPU) {
+    hCPU->instructionPointer = hCPU->sprNew.LR;
+
+    uint32_t strPtr = hCPU->gpr[3];
+    if (strPtr == 0) {
+        return;
+    }
+    char* str = (char*)(s_memoryBaseAddress + strPtr);
+    if (str == nullptr) {
+        return;
+    }
+    if (str[0] != '\0') {
+        Log::print("{}", str);
+    }
+}
+
+void CemuHooks::hook_OSReportToConsole2(PPCInterpreter_t* hCPU) {
+    hCPU->instructionPointer = hCPU->sprNew.LR;
+
+    uint32_t strPtr = hCPU->gpr[3];
+    if (strPtr == 0) {
+        return;
+    }
+    char* str = (char*)(s_memoryBaseAddress + strPtr);
+    if (str == nullptr) {
+        return;
+    }
+    if (str[0] != '\0') {
+        uint32_t arg1 = hCPU->gpr[4];
+        Log::print(str, arg1);
+    }
+}
+
 void CemuHooks::hook_EndCameraSide(PPCInterpreter_t* hCPU) {
     hCPU->instructionPointer = hCPU->sprNew.LR;
 
     OpenXR::EyeSide side = hCPU->gpr[3] == 0 ? OpenXR::EyeSide::LEFT : OpenXR::EyeSide::RIGHT;
 
     if (VRManager::instance().XR->GetRenderer()->IsInitialized() && side == OpenXR::EyeSide::RIGHT) {
-        VRManager::instance().XR->GetRenderer()->EndFrame();
+        RND_Renderer::QueuedFrame frame;
+        VRManager::instance().XR->GetRenderer()->EndFrame(frame);
+        VRManager::instance().XR->GetRenderer()->PresentFrame(frame);
     }
 
     Log::print("{0} {0} {0} {0} {0} {0} {0} {0} {0} {0} {0} {0} {0} {0} {0} {0} {0} {0}", side == OpenXR::EyeSide::LEFT ? "LEFT" : "RIGHT");

@@ -28,64 +28,60 @@ void RND_Renderer::StartFrame() {
     XrFrameBeginInfo beginFrameInfo = { XR_TYPE_FRAME_BEGIN_INFO };
     checkXRResult(xrBeginFrame(m_session, &beginFrameInfo), "Couldn't begin OpenXR frame!");
 
-    VRManager::instance().D3D12->StartFrame();
-    VRManager::instance().XR->UpdateTime(m_frameState.predictedDisplayTime);
-    this->UpdatePoses(m_frameState.predictedDisplayTime);
-
     // todo: update this as late as possible
-    VRManager::instance().XR->UpdateSpaces(m_frameState.predictedDisplayTime);
+    // VRManager::instance().XR->UpdateSpaces(m_frameState.predictedDisplayTime);
+
+    // todo: I'm not sure if these actions should be separated like we do with the XrViews
     VRManager::instance().XR->UpdateActions(m_frameState.predictedDisplayTime, VRManager::instance().Hooks->GetFramesSinceLastCameraUpdate() >= 2);
     // todo: update this as late as possible
     // currently we only support non-AER presenting, aka we render two textures with the same pose and then we present them
-    if (CemuHooks::GetSettings().alternatingEyeRenderingSetting == 0) {
-        // m_layer3D->UpdatePoses(m_frameState.predictedDisplayTime);
-    }
-    else {
-        checkAssert(false, "AER isn't a supported configuration yet!");
-    }
+    // m_layer3D->UpdatePoses(m_frameState.predictedDisplayTime);
 }
 
-void RND_Renderer::EndFrame() {
-    std::vector<XrCompositionLayerBaseHeader*> compositionLayers;
+
+void RND_Renderer::EndFrame(QueuedFrame& frame) {
+    frame.predictedDisplayTime = m_frameState.predictedDisplayTime;
 
     Log::print("RND_Renderer::EndFrame");
 
     // todo: currently ignores m_frameState.shouldRender, but that's probably fine
-    XrCompositionLayerQuad layer2D = { XR_TYPE_COMPOSITION_LAYER_QUAD };
     m_presented2DLastFrame = m_layer2D && m_layer2D->HasCopied();
     // checkAssert(m_presented2DLastFrame, "2D layer should always be rendered!");
     if (m_presented2DLastFrame) {
+        Log::print("Presenting 2D layer");
         // The HUD/menus aren't eye-specific, so present the most recent one for both eyes at once
         m_layer2D->StartRendering();
         m_layer2D->Render();
-        layer2D = m_layer2D->FinishRendering();
-        compositionLayers.emplace_back(reinterpret_cast<XrCompositionLayerBaseHeader*>(&layer2D));
+        frame.temp_2dLayers = m_layer2D->FinishRendering();
+        frame.compositionLayers.emplace_back(reinterpret_cast<XrCompositionLayerBaseHeader*>(&(frame.temp_2dLayers)));
     }
 
-    XrCompositionLayerProjection layer3D = { XR_TYPE_COMPOSITION_LAYER_PROJECTION };
-    std::array<XrCompositionLayerProjectionView, 2> layer3DViews = {};
     m_presented3DLastFrame = false;
     // checkAssert( m_layer3D->HasCopied(OpenXR::EyeSide::LEFT) == m_layer3D->HasCopied(OpenXR::EyeSide::RIGHT), "3D layer should always be rendered for both eyes at once!");
     if (m_layer3D && m_layer3D->HasCopied(OpenXR::EyeSide::LEFT) && m_layer3D->HasCopied(OpenXR::EyeSide::RIGHT)) {
+        Log::print("Presenting 3D layer");
         m_layer3D->StartRendering();
         m_layer3D->Render(OpenXR::EyeSide::LEFT);
         m_layer3D->Render(OpenXR::EyeSide::RIGHT);
-        layer3DViews = m_layer3D->FinishRendering();
-        layer3D.layerFlags = NULL;
-        layer3D.space = VRManager::instance().XR->m_stageSpace;
-        layer3D.viewCount = (uint32_t)layer3DViews.size();
-        layer3D.views = layer3DViews.data();
-        if (CemuHooks::GetFramesSinceLastCameraUpdate() < 2) {
+        frame.temp_3dLayers = m_layer3D->FinishRendering();
+        frame.temp_3dLayers2.layerFlags = NULL;
+        frame.temp_3dLayers2.space = VRManager::instance().XR->m_stageSpace;
+        frame.temp_3dLayers2.viewCount = (uint32_t)frame.temp_3dLayers.colors.size();
+        frame.temp_3dLayers2.views = frame.temp_3dLayers.colors.data();
+        if (CemuHooks::GetFramesSinceLastCameraUpdate() < 2 || true) {
             m_presented3DLastFrame = true;
-            compositionLayers.emplace_back(reinterpret_cast<XrCompositionLayerBaseHeader*>(&layer3D));
+            frame.compositionLayers.emplace_back(reinterpret_cast<XrCompositionLayerBaseHeader*>(&frame.temp_3dLayers2));
         }
     }
+}
 
+
+void RND_Renderer::PresentFrame(QueuedFrame frame) {
     XrFrameEndInfo frameEndInfo = { XR_TYPE_FRAME_END_INFO };
-    frameEndInfo.displayTime = m_frameState.predictedDisplayTime;
+    frameEndInfo.displayTime = frame.predictedDisplayTime;
     frameEndInfo.environmentBlendMode = XR_ENVIRONMENT_BLEND_MODE_OPAQUE;
-    frameEndInfo.layerCount = (uint32_t)compositionLayers.size();
-    frameEndInfo.layers = compositionLayers.data();
+    frameEndInfo.layerCount = (uint32_t)frame.compositionLayers.size();
+    frameEndInfo.layers = frame.compositionLayers.data();
     checkXRResult(xrEndFrame(m_session, &frameEndInfo), "Failed to render texture!");
 
     VRManager::instance().D3D12->EndFrame();
@@ -145,8 +141,6 @@ RND_Renderer::Layer3D::~Layer3D() {
 
 SharedTexture* RND_Renderer::Layer3D::CopyColorToLayer(OpenXR::EyeSide side, VkCommandBuffer copyCmdBuffer, VkImage image) {
     Log::print("Copying color to layer for {} side", side == OpenXR::EyeSide::LEFT ? "left" : "right");
-    m_swapchains[side]->PrepareRendering();
-    m_depthSwapchains[side]->PrepareRendering();
     m_textures[side]->CopyFromVkImage(copyCmdBuffer, image);
     m_copiedColor[side] = true;
     return m_textures[side].get();
@@ -158,7 +152,13 @@ SharedTexture* RND_Renderer::Layer3D::CopyDepthToLayer(OpenXR::EyeSide side, VkC
     return m_depthTextures[side].get();
 }
 
-std::optional<std::array<XrView, 2>> RND_Renderer::UpdatePoses(XrTime predictedDisplayTime) {
+void RND_Renderer::Layer3D::PrepareRendering(OpenXR::EyeSide side) {
+    Log::print("Preparing rendering for {} side", side == OpenXR::EyeSide::LEFT ? "left" : "right");
+    m_swapchains[side]->PrepareRendering();
+    m_depthSwapchains[side]->PrepareRendering();
+}
+
+std::optional<std::array<XrView, 2>> RND_Renderer::UpdateViews(XrTime predictedDisplayTime) {
     std::array newViews = { XrView{ XR_TYPE_VIEW }, XrView{ XR_TYPE_VIEW } };
     XrViewLocateInfo viewLocateInfo = { XR_TYPE_VIEW_LOCATE_INFO };
     viewLocateInfo.viewConfigurationType = XR_VIEW_CONFIGURATION_TYPE_PRIMARY_STEREO;
@@ -191,6 +191,7 @@ void RND_Renderer::Layer3D::Render(OpenXR::EyeSide side) {
 
     RND_D3D12::CommandContext<false> renderSharedTexture(device, queue, allocator, [this, side](RND_D3D12::CommandContext<false>* context) {
         context->GetRecordList()->SetName(L"RenderSharedTexture");
+        Log::print("[D3D12] Waiting for {} side to be 1", side == OpenXR::EyeSide::LEFT ? "left" : "right");
         context->WaitFor(m_textures[side].get(), 1);
         context->WaitFor(m_depthTextures[side].get(), 1);
         m_textures[side]->d3d12TransitionLayout(context->GetRecordList(), D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE);
@@ -206,32 +207,27 @@ void RND_Renderer::Layer3D::Render(OpenXR::EyeSide side) {
         m_depthTextures[side]->d3d12TransitionLayout(context->GetRecordList(), D3D12_RESOURCE_STATE_COPY_DEST);
         context->Signal(m_textures[side].get(), 0);
         context->Signal(m_depthTextures[side].get(), 0);
+        Log::print("[D3D12] Signalling for {} side to be 0", side == OpenXR::EyeSide::LEFT ? "left" : "right");
     });
 }
 
-const std::array<XrCompositionLayerProjectionView, 2>& RND_Renderer::Layer3D::FinishRendering() {
-    if (this->m_copiedColor[OpenXR::EyeSide::LEFT]) {
-        this->m_swapchains[OpenXR::EyeSide::LEFT]->FinishRendering();
-        this->m_copiedColor[OpenXR::EyeSide::LEFT] = false;
-    }
-    if (this->m_copiedDepth[OpenXR::EyeSide::LEFT]) {
-        this->m_depthSwapchains[OpenXR::EyeSide::LEFT]->FinishRendering();
-        this->m_copiedDepth[OpenXR::EyeSide::LEFT] = false;
-    }
-    if (this->m_copiedColor[OpenXR::EyeSide::RIGHT]) {
-        this->m_swapchains[OpenXR::EyeSide::RIGHT]->FinishRendering();
-        this->m_copiedColor[OpenXR::EyeSide::RIGHT] = false;
-    }
-    if (this->m_copiedDepth[OpenXR::EyeSide::RIGHT]) {
-        this->m_depthSwapchains[OpenXR::EyeSide::RIGHT]->FinishRendering();
-        this->m_copiedDepth[OpenXR::EyeSide::RIGHT] = false;
-    }
+XrCompositionLayerProjectionWithDepth RND_Renderer::Layer3D::FinishRendering() {
+    this->m_swapchains[OpenXR::EyeSide::LEFT]->FinishRendering();
+    this->m_depthSwapchains[OpenXR::EyeSide::LEFT]->FinishRendering();
+    this->m_swapchains[OpenXR::EyeSide::RIGHT]->FinishRendering();
+    this->m_depthSwapchains[OpenXR::EyeSide::RIGHT]->FinishRendering();
 
+    this->m_copiedColor[OpenXR::EyeSide::LEFT] = false;
+    this->m_copiedColor[OpenXR::EyeSide::RIGHT] = false;
+    this->m_copiedDepth[OpenXR::EyeSide::LEFT] = false;
+    this->m_copiedDepth[OpenXR::EyeSide::RIGHT] = false;
 
     // clang-format off
-    m_projectionViews[OpenXR::EyeSide::LEFT] = {
+    XrCompositionLayerProjectionWithDepth layer3DRenderInfo = {
+    };
+    layer3DRenderInfo.colors[OpenXR::EyeSide::LEFT] = {
         .type = XR_TYPE_COMPOSITION_LAYER_PROJECTION_VIEW,
-        .next = &m_projectionViewsDepthInfo[OpenXR::EyeSide::LEFT],
+        .next = &layer3DRenderInfo.depths[OpenXR::EyeSide::LEFT],
         .pose = VRManager::instance().XR->GetRenderer()->GetPose(OpenXR::EyeSide::LEFT).value(),
         .fov = VRManager::instance().XR->GetRenderer()->GetFOV(OpenXR::EyeSide::LEFT).value(),
         .subImage = {
@@ -243,9 +239,9 @@ const std::array<XrCompositionLayerProjectionView, 2>& RND_Renderer::Layer3D::Fi
                     .height = (int32_t)this->m_swapchains[OpenXR::EyeSide::LEFT]->GetHeight()
                 }
             }
-        },
+        }
     };
-    m_projectionViewsDepthInfo[OpenXR::EyeSide::LEFT] = {
+    layer3DRenderInfo.depths[OpenXR::EyeSide::LEFT] = {
         .type = XR_TYPE_COMPOSITION_LAYER_DEPTH_INFO_KHR,
         .subImage = {
             .swapchain = this->m_depthSwapchains[OpenXR::EyeSide::LEFT]->GetHandle(),
@@ -262,9 +258,9 @@ const std::array<XrCompositionLayerProjectionView, 2>& RND_Renderer::Layer3D::Fi
         .nearZ = 1.0f,
         .farZ = 25000.0f,
     };
-    m_projectionViews[OpenXR::EyeSide::RIGHT] = {
+    layer3DRenderInfo.colors[OpenXR::EyeSide::RIGHT] = {
         .type = XR_TYPE_COMPOSITION_LAYER_PROJECTION_VIEW,
-        .next = &m_projectionViewsDepthInfo[OpenXR::EyeSide::RIGHT],
+        .next = &layer3DRenderInfo.depths[OpenXR::EyeSide::RIGHT],
         .pose = VRManager::instance().XR->GetRenderer()->GetPose(OpenXR::EyeSide::RIGHT).value(),
         .fov = VRManager::instance().XR->GetRenderer()->GetFOV(OpenXR::EyeSide::RIGHT).value(),
         .subImage = {
@@ -276,9 +272,9 @@ const std::array<XrCompositionLayerProjectionView, 2>& RND_Renderer::Layer3D::Fi
                     .height = (int32_t)this->m_swapchains[OpenXR::EyeSide::RIGHT]->GetHeight()
                 }
             }
-        },
+        }
     };
-    m_projectionViewsDepthInfo[OpenXR::EyeSide::RIGHT] = {
+    layer3DRenderInfo.depths[OpenXR::EyeSide::RIGHT] = {
         .type = XR_TYPE_COMPOSITION_LAYER_DEPTH_INFO_KHR,
         .subImage = {
             .swapchain = this->m_depthSwapchains[OpenXR::EyeSide::RIGHT]->GetHandle(),
@@ -296,7 +292,7 @@ const std::array<XrCompositionLayerProjectionView, 2>& RND_Renderer::Layer3D::Fi
         .farZ = 25000.0f,
     };
     // clang-format on
-    return m_projectionViews;
+    return layer3DRenderInfo;
 }
 
 

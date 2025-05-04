@@ -11,26 +11,30 @@ public:
 
     ID3D12Device* GetDevice() { return m_device.Get(); };
 
-    ID3D12CommandQueue* GetCommandQueue() { return m_queue.Get(); };
-
-    void StartFrame() {
-        checkHResult(m_device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&m_allocator)), "Failed to created D3D12_CommandContext's allocator!");
-    }
-    void EndFrame() {
+    ID3D12CommandQueue* GetCommandQueue() { return m_queue.Get(); }
+    void WaitForFinishedAllocator(ID3D12CommandAllocator* allocator) {
         // Wait for GPU to finish queue
-        checkHResult(m_device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&m_fence)), "Failed to create fence for end-of-frame waiting!");
-        checkHResult(m_queue->Signal(m_fence.Get(), 1), "Failed to signal fence for end-of-frame waiting!");
+        ComPtr<ID3D12Fence> finishFrameFence;
+        checkHResult(m_device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&finishFrameFence)), "Failed to create fence for end-of-frame waiting!");
+        checkHResult(m_queue->Signal(finishFrameFence.Get(), 1), "Failed to signal fence for end-of-frame waiting!");
 
+        Log::print("Waiting for command allocator to finish frame...");
         HANDLE waitEvent = CreateEventA(nullptr, FALSE, FALSE, nullptr);
         checkAssert(waitEvent != NULL, "Failed to create upload event!");
-        checkHResult(m_fence->SetEventOnCompletion(1, waitEvent), "Failed to set event completion for end-of-frame waiting!");
+        checkHResult(finishFrameFence->SetEventOnCompletion(1, waitEvent), "Failed to set event completion for end-of-frame waiting!");
         WaitForSingleObject(waitEvent, INFINITE);
+        Log::print("Finished waiting for command allocator to finish frame!");
+        CloseHandle(waitEvent);
+        finishFrameFence->Release();
+    }
 
-        // Reset allocator after queue is finished
-        m_allocator->Reset();
+    void EndFrame() {
+        m_allocatorIdx = (m_allocatorIdx + 1) % m_allocators.size();
+        WaitForFinishedAllocator(m_allocators[m_allocatorIdx].Get());
+        checkHResult(m_allocators[m_allocatorIdx]->Reset(), "Failed to reset command allocator!");
     };
 
-    ID3D12CommandAllocator* GetFrameAllocator() { return m_allocator.Get(); };
+    ID3D12CommandAllocator* GetFrameAllocator() { return m_allocators[m_allocatorIdx].Get(); }
 
     // todo: extract most to a base pipeline class if other pipelines are needed
     template <bool depth>
@@ -125,6 +129,7 @@ public:
 private:
     ComPtr<ID3D12Device> m_device;
     ComPtr<ID3D12CommandQueue> m_queue;
-    ComPtr<ID3D12CommandAllocator> m_allocator;
-    ComPtr<ID3D12Fence> m_fence;
+
+    uint32_t m_allocatorIdx = 0;
+    std::array<ComPtr<ID3D12CommandAllocator>, 3> m_allocators;
 };

@@ -87,9 +87,8 @@ public:
     void CreateSession(const XrGraphicsBindingD3D12KHR& d3d12Binding);
     void CreateActions();
     std::array<XrViewConfigurationView, 2> GetViewConfigurations();
-    void UpdateTime(XrTime predictedDisplayTime);
     std::optional<XrSpaceLocation> UpdateSpaces(XrTime predictedDisplayTime);
-    void UpdateActions(XrTime predictedFrameTime, bool inMenu);
+    std::optional<OpenXR::InputState> UpdateActions(XrTime predictedFrameTime, bool inMenu);
     void ProcessEvents();
 
     XrSession GetSession() { return m_session; }

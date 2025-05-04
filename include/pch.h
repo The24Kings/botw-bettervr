@@ -66,6 +66,11 @@ inline std::string& toLower(std::string str) {
     return str;
 }
 
+struct XrCompositionLayerProjectionWithDepth {
+    std::array<XrCompositionLayerProjectionView, 2> colors;
+    std::array<XrCompositionLayerDepthInfoKHR, 2> depths;
+};
+
 template<class T, template<class...> class U>
 inline constexpr bool is_instance_of_v = std::false_type{};
 

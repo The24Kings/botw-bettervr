@@ -3,6 +3,11 @@ moduleMatches = 0x6267BFD0
 
 .origin = codecave
 
+str_printClear3DColorBuffer_left:
+.string "[PPC] Clearing 3D color buffer with left eye"
+str_printClear3DColorBuffer_right:
+.string "[PPC] Clearing 3D color buffer with right eye"
+
 magic3DColorValue:
 .float (0.0 / 32.0)
 .float 0.123456789
@@ -46,6 +51,40 @@ beq skipClearing3DColorBuffer
 addi r3, r3, 0xBC ; r3 is now the agl::RenderBuffer::mColorBuffer[0]::mGX2FrameBuffer object
 
 bl import.gx2.GX2ClearColor
+bla import.gx2.GX2DrawDone
+bla import.gx2.GX2Flush
+bla import.gx2.GX2DrawDone
+
+stwu r1, -0x20(r1)
+stw r3, 0x1C(r1)
+stw r4, 0x18(r1)
+stw r5, 0x14(r1)
+stw r6, 0x10(r1)
+
+lis r3, currentEyeSide@ha
+lwz r3, currentEyeSide@l(r3)
+cmpwi r3, 0
+lis r3, str_printClear3DColorBuffer_left@ha
+addi r3, r3, str_printClear3DColorBuffer_left@l
+beq actualPrint_1
+
+lis r3, str_printClear3DColorBuffer_right@ha
+addi r3, r3, str_printClear3DColorBuffer_right@l
+actualPrint_1:
+li r4, 10
+crxor 4*cr1+eq, 4*cr1+eq, 4*cr1+eq
+bl import.coreinit.hook_OSReportToConsole
+
+lwz r3, 0x1C(r1)
+lwz r4, 0x18(r1)
+lwz r5, 0x14(r1)
+lwz r6, 0x10(r1)
+addi r1, r1, 0x20
+
+bla import.gx2.GX2DrawDone
+bla import.gx2.GX2Flush
+bla import.gx2.GX2DrawDone
+
 
 skipClearing3DColorBuffer:
 lfs f1, 0x20(r1)
@@ -62,6 +101,11 @@ blr
 
 magic3DDepthValue:
 .float 0.0123456789
+
+str_printClear3DDepthBuffer_left:
+.string "[PPC] Clearing 3D depth buffer with left eye"
+str_printClear3DDepthBuffer_right:
+.string "[PPC] Clearing 3D depth buffer with right eye"
 
 clear3DDepthBuffer:
 mflr r3
@@ -89,6 +133,39 @@ beq skipClearing3DDepthBuffer
 addi r3, r3, 0xBC ; r3 is now the agl::RenderBuffer::mDepthTarget::mGX2FrameBuffer object
 
 bl import.gx2.GX2ClearDepthStencilEx
+bla import.gx2.GX2DrawDone
+bla import.gx2.GX2Flush
+bla import.gx2.GX2DrawDone
+
+stwu r1, -0x20(r1)
+stw r3, 0x1C(r1)
+stw r4, 0x18(r1)
+stw r5, 0x14(r1)
+stw r6, 0x10(r1)
+
+lis r3, currentEyeSide@ha
+lwz r3, currentEyeSide@l(r3)
+cmpwi r3, 0
+lis r3, str_printClear3DDepthBuffer_left@ha
+addi r3, r3, str_printClear3DDepthBuffer_left@l
+beq actualPrint_2
+
+lis r3, str_printClear3DDepthBuffer_right@ha
+addi r3, r3, str_printClear3DDepthBuffer_right@l
+actualPrint_2:
+li r4, 10
+crxor 4*cr1+eq, 4*cr1+eq, 4*cr1+eq
+bl import.coreinit.hook_OSReportToConsole
+
+lwz r3, 0x1C(r1)
+lwz r4, 0x18(r1)
+lwz r5, 0x14(r1)
+lwz r6, 0x10(r1)
+addi r1, r1, 0x20
+
+bla import.gx2.GX2DrawDone
+bla import.gx2.GX2Flush
+bla import.gx2.GX2DrawDone
 
 skipClearing3DDepthBuffer:
 lfs f1, 0x20(r1)
@@ -120,3 +197,4 @@ blr
 
 
 0x039B3044 = bla hookPostHDRComposedImage
+;0x0397AB30 = cmpw r3, r3

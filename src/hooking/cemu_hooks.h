@@ -30,6 +30,8 @@ public:
         osLib_registerHLEFunction("coreinit", "hook_EndCameraSide", &hook_EndCameraSide);
         osLib_registerHLEFunction("coreinit", "hook_GetRenderProjection", &hook_GetRenderProjection);
         osLib_registerHLEFunction("coreinit", "hook_GetRenderCamera", &hook_GetRenderCamera);
+        osLib_registerHLEFunction("coreinit", "hook_OSReportToConsole", &hook_OSReportToConsole);
+        osLib_registerHLEFunction("coreinit", "hook_OSReportToConsole2", &hook_OSReportToConsole2);
     };
     ~CemuHooks() {
         FreeLibrary(m_cemuHandle);
@@ -61,6 +63,8 @@ private:
     static void hook_BeginCameraSide(PPCInterpreter_t* hCPU);
     static void hook_GetRenderCamera(PPCInterpreter_t* hCPU);
     static void hook_GetRenderProjection(PPCInterpreter_t* hCPU);
+    static void hook_OSReportToConsole(PPCInterpreter_t* hCPU);
+    static void hook_OSReportToConsole2(PPCInterpreter_t* hCPU);
     static void hook_EndCameraSide(PPCInterpreter_t* hCPU);
 
     static void updateFrames();

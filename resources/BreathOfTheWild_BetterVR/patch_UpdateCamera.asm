@@ -37,24 +37,32 @@ bctrl ; bl sead__TaskMgr__calcDestruction
 lis r3, calculateUIMaybe@ha
 addi r3, r3, calculateUIMaybe@l
 mtctr r3
-bctrl
-;bl calculateUIMaybe
+bctrl ; bl calculateUIMaybe
 
 ; ========================================================================
 ; FIRST EYE SIDE
 ; ========================================================================
-
-li r0, 0
-lis r12, currentEyeSide@ha
-stw r0, currentEyeSide@l(r12)
-li r3, 0
-bl import.coreinit.hook_BeginCameraSide
 
 lwz r12, 0(r30)
 lwz r0, 0xF4(r12)
 mtctr r0
 mr r3, r30
 bctrl ; sead__GameFrameworkCafe__procDraw
+
+; todo: find a way on how to combine this with the original loop so that we don't do it four times
+bl import.gx2.GX2DrawDone
+
+li r0, 0
+lis r12, currentEyeSide@ha
+stw r0, currentEyeSide@l(r12)
+li r3, 1
+bl import.coreinit.hook_EndCameraSide
+
+li r0, 0
+lis r12, currentEyeSide@ha
+stw r0, currentEyeSide@l(r12)
+li r3, 0
+bl import.coreinit.hook_BeginCameraSide
 
 lwz r12, 0(r30)
 lwz r11, 0xFC(r12)
@@ -74,24 +82,27 @@ mtctr r12
 mr r3, r30
 bctrl ; sead__GameFrameworkCafe__presentAndDrawDone
 
-li r3, 0
-bl import.coreinit.hook_EndCameraSide
-
 ; ========================================================================
 ; SECOND EYE SIDE
 ; ========================================================================
-
-li r0, 1
-lis r12, currentEyeSide@ha
-stw r0, currentEyeSide@l(r12)
-li r3, 1
-bl import.coreinit.hook_BeginCameraSide
 
 lwz r12, 0(r30)
 lwz r0, 0xF4(r12)
 mtctr r0
 mr r3, r30
 bctrl ; sead__GameFrameworkCafe__procDraw
+
+; todo: find a way on how to combine this with the original loop so that we don't do it four times
+bl import.gx2.GX2DrawDone
+
+li r3, 0
+bl import.coreinit.hook_EndCameraSide
+
+li r0, 1
+lis r12, currentEyeSide@ha
+stw r0, currentEyeSide@l(r12)
+li r3, 1
+bl import.coreinit.hook_BeginCameraSide
 
 lwz r12, 0(r30)
 lwz r11, 0xFC(r12)
@@ -140,11 +151,6 @@ li r3, 0
 bctrl ; lockOrUnlockDrawContextMgr
 
 loc_31FA95C:
-li r0, 0
-lis r12, currentEyeSide@ha
-stw r0, currentEyeSide@l(r12)
-li r3, 1
-bl import.coreinit.hook_EndCameraSide
 
 ; ========================================================================
 ; ========================================================================
@@ -193,6 +199,8 @@ blr
 
 0x031FA880 = ba custom_sead__GameFramework__procFrame
 
+; disable vsync
+0x031FA9C4 = nop
 
 
 ; ==================================================================================
@@ -423,7 +431,7 @@ beq doCallRec
 lis r3, sead__Delegate__RootTaskAndControllerMgr__invoke@ha
 addi r3, r3, sead__Delegate__RootTaskAndControllerMgr__invoke@l
 cmpw r10, r3
-beq doCallRec
+;beq doCallRec
 
 
 ;b doCallRec
