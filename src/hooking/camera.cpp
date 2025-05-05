@@ -54,7 +54,7 @@ void CemuHooks::hook_GetRenderCamera(PPCInterpreter_t* hCPU) {
         glm::mat4 viewGame = glm::transpose(originalMatrix);
         glm::mat4 worldGame = glm::inverse(viewGame);
         glm::quat baseRot  = glm::quat_cast(worldGame);
-        glm::vec3 basePos  = glm::vec3(worldGame[3]);
+        glm::vec3 basePos  = glm::vec3(worldGame[3]) + glm::vec3(0.0f, GetSettings().playerHeightSetting.getLE(), 0.0f);
 
         // vr camera
         if (!VRManager::instance().XR->GetRenderer()->GetPose(cameraSide).has_value()) {

@@ -11,9 +11,6 @@ CameraModeSetting:
 GUIFollowModeSetting:
 .int $guiFollowMode
 
-AlternatingEyeRenderingSetting:
-.int $AER
-
 CropFlatTo16_9Setting:
 .int $cropFlatTo16_9
 

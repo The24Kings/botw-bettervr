@@ -9,7 +9,6 @@ default = 1
 [Default]
 $cameraMode:int = 0
 $guiFollowMode:int = 1
-$AER:int = 0
 $cropFlatTo16_9:int = 1
 
 $cameraDistance = 0.5
@@ -48,19 +47,6 @@ name = HUD & Menus Stays In Front
 category = GUI Follow Mode
 $guiFollowMode:int = 0
 
-
-# Alternate Eye Rendering
-
-[Preset]
-name = Enabled, Update Camera Separately
-category = Alternate Eye Rendering
-$AER = 1
-
-[Preset]
-name = Disabled, Update Camera Simultaneously (Default)
-category = Alternate Eye Rendering
-default = 1
-$AER = 0
 
 # First Person - Height Offset
 [Preset]
