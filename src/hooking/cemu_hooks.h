@@ -30,6 +30,7 @@ public:
         osLib_registerHLEFunction("coreinit", "hook_BeginCameraSide", &hook_BeginCameraSide);
         osLib_registerHLEFunction("coreinit", "hook_EndCameraSide", &hook_EndCameraSide);
         osLib_registerHLEFunction("coreinit", "hook_CameraRotationControl", &hook_CameraRotationControl);
+        osLib_registerHLEFunction("coreinit", "hook_ReplaceCameraMode", &hook_ReplaceCameraMode);
         osLib_registerHLEFunction("coreinit", "hook_GetRenderProjection", &hook_GetRenderProjection);
         osLib_registerHLEFunction("coreinit", "hook_GetRenderCamera", &hook_GetRenderCamera);
         osLib_registerHLEFunction("coreinit", "hook_ApplyCameraRotation", &hook_ApplyCameraRotation);
@@ -67,9 +68,9 @@ public:
     static std::array<uint32_t, 2> m_heldWeapons;
     static std::array<uint32_t, 2> m_heldWeaponsLastUpdate;
     static uint32_t s_playerMtxAddress;
+    static uint32_t s_cameraMtxAddress;
     static glm::fvec3 s_playerPos;
-    static glm::fquat s_cameraRotation;
-    static glm::fquat s_forwardRotation;
+    static glm::mat4 s_lastCameraMtx;
 
     static void DrawDebugOverlays();
 
@@ -99,6 +100,7 @@ private:
     static void hook_GetRenderCamera(PPCInterpreter_t* hCPU);
     static void hook_GetRenderProjection(PPCInterpreter_t* hCPU);
     static void hook_CameraRotationControl(PPCInterpreter_t* hCPU);
+    static void hook_ReplaceCameraMode(PPCInterpreter_t* hCPU);
     static void hook_ApplyCameraRotation(PPCInterpreter_t* hCPU);
     static void hook_EndCameraSide(PPCInterpreter_t* hCPU);
     static void hook_SetActorOpacity(PPCInterpreter_t* hCPU);

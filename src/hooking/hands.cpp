@@ -1,4 +1,4 @@
-#include "../instance.h"
+#include "instance.h"
 #include "cemu_hooks.h"
 #include "hands.h"
 
@@ -388,14 +388,7 @@ void CemuHooks::hook_ModifyBoneMatrix(PPCInterpreter_t* hCPU) {
         // #113 is right ankle
         // #114 is leg, ankle downwards
         // #115
-        //if (boneIdx == 90) {
-        //    matrix.setPos(glm::fvec3(0, 0.5, 0));
-        //    matrix.setRotLE(glm::identity<glm::fquat>());
-        //    writeMemory(matrixPtr, &matrixPtr);
-        //}
-
         //Log::print("!! Bone name couldn't be found for bone #{} for model {}", boneIdx, modelName.getLE());
-        Log::print("!! Bone index #{} for model {}", boneIdx, modelName.getLE());
         return;
     }
     else {
@@ -605,8 +598,8 @@ void CemuHooks::hook_ModifyModelBoneMatrix(PPCInterpreter_t* hCPU) {
     BEMatrix34 matrix;
     readMemory(matrixPtr, &matrix);
 
-    if (modelName.getLE().starts_with("Armor_067")) {
-        //matrix.setPos(matrix.getPos().getLE());
-        //writeMemory(matrixPtr, &matrix);
-    }
+    //if (modelName.getLE().starts_with("Armor_067")) {
+    //    //matrix.setPos(matrix.getPos().getLE());
+    //    //writeMemory(matrixPtr, &matrix);
+    //}
 }

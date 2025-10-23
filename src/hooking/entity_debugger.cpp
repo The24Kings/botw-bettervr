@@ -11,6 +11,7 @@ std::mutex g_actorListMutex;
 std::unordered_map<uint32_t, std::pair<std::string, uint32_t>> s_knownActors;
 glm::fvec3 CemuHooks::s_playerPos = {};
 uint32_t CemuHooks::s_playerMtxAddress = 0;
+uint32_t CemuHooks::s_cameraMtxAddress = 0;
 
 void CemuHooks::hook_UpdateActorList(PPCInterpreter_t* hCPU) {
     hCPU->instructionPointer = hCPU->sprNew.LR;
@@ -54,6 +55,10 @@ void CemuHooks::hook_UpdateActorList(PPCInterpreter_t* hCPU) {
          readMemory(actorMtxPtr, &mtx);
          s_playerPos = mtx.getPos().getLE();
          s_playerMtxAddress = actorMtxPtr;
+     }
+     else if (strcmp(actorName, "GameRomCamera") == 0) {
+         uint32_t actorMtxPtr = hCPU->gpr[6] + offsetof(ActorWiiU, mtx);
+         s_cameraMtxAddress = actorMtxPtr;
      }
 }
 
@@ -413,12 +418,12 @@ void EntityDebugger::DrawEntityInspector() {
                     }
                     else if constexpr (std::is_same_v<T, BEMatrix34>) {
                         if (value.expanded) {
-                            auto mtx = std::get<BEMatrix34>(value.value).getLE();
-                            ImGui::Indent(); bool row0Changed = ImGui::DragFloat4("Row 0", mtx[0].data(), 10.0f, 0, 0, nullptr, ImGuiSliderFlags_NoRoundToFormat); ImGui::Unindent();
-                            ImGui::Indent(); bool row1Changed = ImGui::DragFloat4("Row 1", mtx[1].data(), 10.0f, 0, 0, nullptr, ImGuiSliderFlags_NoRoundToFormat); ImGui::Unindent();
-                            ImGui::Indent(); bool row2Changed = ImGui::DragFloat4("Row 2", mtx[2].data(), 10.0f, 0, 0, nullptr, ImGuiSliderFlags_NoRoundToFormat); ImGui::Unindent();
+                            auto mtx = std::get<BEMatrix34>(value.value).getLEMatrix();
+                            ImGui::Indent(); bool row0Changed = ImGui::DragFloat4("Row 0", &mtx[0].x, 10.0f, 0, 0, nullptr, ImGuiSliderFlags_NoRoundToFormat); ImGui::Unindent();
+                            ImGui::Indent(); bool row1Changed = ImGui::DragFloat4("Row 1", &mtx[1].x, 10.0f, 0, 0, nullptr, ImGuiSliderFlags_NoRoundToFormat); ImGui::Unindent();
+                            ImGui::Indent(); bool row2Changed = ImGui::DragFloat4("Row 2", &mtx[2].x, 10.0f, 0, 0, nullptr, ImGuiSliderFlags_NoRoundToFormat); ImGui::Unindent();
                             if (row0Changed || row1Changed || row2Changed) {
-                                std::get<BEMatrix34>(value.value).setLE(mtx);
+                                std::get<BEMatrix34>(value.value).setLEMatrix(mtx);
                             }
                         }
                         else {

@@ -167,7 +167,9 @@ void CemuHooks::hook_InjectXRInput(PPCInterpreter_t* hCPU) {
             worldMoveVec = glm::vec3(0.0f);
         }
 
-        vpadStatus.leftStick = { worldMoveVec.x + vpadStatus.leftStick.x.getLE(), worldMoveVec.z + vpadStatus.leftStick.y.getLE() };
+        worldMoveVec = {0, 0, 0};
+
+        vpadStatus.leftStick = { worldMoveVec.x + leftStickSource.currentState.x + vpadStatus.leftStick.x.getLE(), worldMoveVec.z + leftStickSource.currentState.y + vpadStatus.leftStick.y.getLE() };
     }
     else {
         vpadStatus.leftStick = { leftStickSource.currentState.x + vpadStatus.leftStick.x.getLE(), leftStickSource.currentState.y + vpadStatus.leftStick.y.getLE() };
@@ -186,6 +188,11 @@ void CemuHooks::hook_InjectXRInput(PPCInterpreter_t* hCPU) {
 
     // camera/fast-scroll stick
     XrActionStateVector2f& rightStickSource = inputs.inGame.in_game ? inputs.inGame.camera : inputs.inMenu.scroll;
+
+    if (GetSettings().IsFirstPersonMode() && inputs.inGame.in_game) {
+        rightStickSource.currentState.y = 0;
+    }
+
     vpadStatus.rightStick = {rightStickSource.currentState.x + vpadStatus.rightStick.x.getLE(), rightStickSource.currentState.y + vpadStatus.rightStick.y.getLE()};
 
     if (rightStickSource.currentState.x <= -AXIS_THRESHOLD || (HAS_FLAG(oldXRStickHold, VPAD_STICK_R_EMULATION_LEFT) && rightStickSource.currentState.x <= -HOLD_THRESHOLD))

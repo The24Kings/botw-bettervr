@@ -80,10 +80,11 @@ blr
 0x02B96E10 = li r3, 0
 
 
-cameraFinder:
+
+cameraModePtr:
 .int 0
 
-storeCameraFinder:
+storeCameraModePtr:
 mr r3, r31
 
 mflr r0
@@ -93,8 +94,8 @@ stw r3, 0x1C(r1)
 stw r4, 0x18(r1)
 stw r5, 0x14(r1)
 
-lis r4, cameraFinder@ha
-stw r3, cameraFinder@l(r4)
+lis r4, cameraModePtr@ha
+stw r3, cameraModePtr@l(r4)
 
 lwz r5, 0x14(r1)
 lwz r4, 0x18(r1)
@@ -105,38 +106,40 @@ mtlr r0
 blr
 
 ;; store CameraFinder (camera controls. Fixes first-person mode)
-;;0x02BCE5DC = bla cameraFinder
+;;0x02BCE5DC = bla storeCameraModePtr
 ;; store CameraKeep (no right-stick controls at all! Might not follow player?)
-;;0x02BD55AC = bla cameraFinder
+;;0x02BD55AC = bla storeCameraModePtr
 ;; store CameraTail (seems to fix pivot anchor issues and forward looking camera?!)
-;0x02BEB244 = bla cameraFinder
+0x02BEB244 = bla storeCameraModePtr
 ;; store CameraRevolve
-;;0x02BE443C = bla cameraFinder
+;;0x02BE443C = bla storeCameraModePtr
 ;; store CameraAbyss (prevents all rotational camera, but follows player)
-;;0x02B8E858 = bla cameraFinder
+;;0x02B8E858 = bla storeCameraModePtr
 
 useCameraFinder:
 mflr r0
 stwu r1, -0x20(r1)
 stw r0, 0x24(r1)
-stw r3, 0x1C(r1)
+;stw r3, 0x1C(r1)
 stw r4, 0x18(r1)
 stw r5, 0x14(r1)
 
+; r3 is modified by the hook, if needed
+lis r4, cameraModePtr@ha
+lwz r4, cameraModePtr@l(r4)
+lwz r5, 0x0C(r3) ; load vtable pointer from current camera mode
+
+bl import.coreinit.hook_ReplaceCameraMode
+
+
 lwz r5, 0x14(r1)
 lwz r4, 0x18(r1)
-lwz r3, 0x1C(r1)
+;lwz r3, 0x1C(r1)
 lwz r0, 0x24(r1)
 addi r1, r1, 0x20
 mtlr r0
 
-; todo: disable this for third-person mode
-; todo: what about climbing, back of mipha during divine beast, etc.?
-; todo: rename variables to the camera mode we'll eventually use
-lis r3, cameraFinder@ha
-lwz r3, cameraFinder@l(r3)
-
 mr r31, r3
 blr
 
-;0x02B8FCA4 = bla useCameraFinder
+0x02B8FCA4 = bla useCameraFinder

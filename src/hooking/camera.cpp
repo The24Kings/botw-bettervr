@@ -123,6 +123,24 @@ void CemuHooks::hook_CameraRotationControl(PPCInterpreter_t* hCPU) {
     //VRManager::instance().XR->m_inputCameraRotation = glm::normalize(VRManager::instance().XR->m_inputCameraRotation.load() * qYaw);
 }
 
+void CemuHooks::hook_ReplaceCameraMode(PPCInterpreter_t* hCPU) {
+    hCPU->instructionPointer = hCPU->sprNew.LR;
+
+    uint32_t currentCameraMode = hCPU->gpr[3];
+    uint32_t cameraTailMode = hCPU->gpr[4]; // works best in VR since it ignores the pivot of the camera
+    uint32_t currentCameraVtbl = hCPU->gpr[5];
+
+    constexpr uint32_t kCameraChaseVtbl = 0x101B34F4;
+
+    if (hCPU->gpr[5] == kCameraChaseVtbl) {
+        //Log::print("Current camera mode: {:#X}, tail mode: {:#X}, vtbl: {:#X}", currentCameraMode, cameraTailMode, currentCameraVtbl);
+        if (GetSettings().IsFirstPersonMode()) {
+            // overwrite to tail mode
+            //hCPU->gpr[3] = cameraTailMode;
+        }
+    }
+}
+
 
 static std::pair<glm::quat, glm::quat> swingTwistY(const glm::quat& q) {
     glm::vec3 yAxis(0, 1, 0);
@@ -136,8 +154,7 @@ static std::pair<glm::quat, glm::quat> swingTwistY(const glm::quat& q) {
 }
 
 
-glm::fquat CemuHooks::s_cameraRotation = {};
-glm::fquat CemuHooks::s_forwardRotation = glm::angleAxis(-90.0f, glm::vec3(0.0f, 1.0f, 0.0f));
+glm::mat4 CemuHooks::s_lastCameraMtx = glm::mat4(1.0f);
 
 void CemuHooks::hook_GetRenderCamera(PPCInterpreter_t* hCPU) {
     hCPU->instructionPointer = hCPU->sprNew.LR;
@@ -150,14 +167,15 @@ void CemuHooks::hook_GetRenderCamera(PPCInterpreter_t* hCPU) {
 
     Log::print("[PPC] Getting render camera for {} side", cameraSide == OpenXR::EyeSide::LEFT ? "left" : "right");
 
-    // in-game camera
-    glm::mat3x4 originalMatrix = camera.mtx.getLEMatrix();
-    glm::mat4 viewGame = glm::transpose(originalMatrix);
-    glm::mat4 worldGame = glm::inverse(viewGame);
-    glm::quat baseRot = glm::quat_cast(worldGame);
-    auto [swing, baseYaw] = swingTwistY(baseRot);
+    s_lastCameraMtx = glm::fmat4x3(glm::inverse(glm::mat4(camera.mtx.getLEMatrix()))); // glm::inverse(glm::lookAtRH(camera.pos.getLE(), camera.at.getLE(), camera.up.getLE()));
 
+    // in-game camera
+    glm::mat4x3 viewMatrix = camera.mtx.getLEMatrix();
+    glm::mat4 worldGame = glm::inverse(glm::mat4(viewMatrix));
+    glm::quat baseRot = glm::quat_cast(worldGame);
     glm::vec3 basePos = glm::vec3(worldGame[3]);
+    auto [swing, baseYaw] = swingTwistY(baseRot);
+    //baseYaw = glm::quat(glm::fvec3(0, glm::yaw(baseRot), 0));
 
 
     // take link's direction, then rotate the headset position
@@ -170,34 +188,38 @@ void CemuHooks::hook_GetRenderCamera(PPCInterpreter_t* hCPU) {
     std::optional<XrPosef> currPoseOpt = VRManager::instance().XR->GetRenderer()->GetPose(cameraSide);
     if (!currPoseOpt.has_value())
         return;
-    glm::fvec3 eyePos = ToGLM(currPoseOpt.value().position);
-    glm::fquat eyeRot = ToGLM(currPoseOpt.value().orientation);
+    glm::fvec3 vrPos = ToGLM(currPoseOpt.value().position);
+    glm::fquat vrRot = ToGLM(currPoseOpt.value().orientation);
 
-    s_cameraRotation = baseYaw;
-    s_forwardRotation = s_cameraRotation * glm::angleAxis(glm::radians(90.0f), glm::vec3(0.0f, 1.0f, 0.0f));
+    if (CemuHooks::GetSettings().IsFirstPersonMode()) {
+        basePos = playerPos;
+    }
 
-    // todo: we moved to our own custom camera system, but we could see if the CameraOld method might've worked if we swapped the order of the quaternion multiplications. Apparently it's important.
-
-    glm::vec3 newPos = playerPos + (baseYaw * eyePos);
-    glm::fquat newRot = baseYaw * eyeRot;
+    glm::vec3 newPos = basePos + (baseYaw * vrPos);
+    glm::fquat newRot = baseYaw * vrRot;
 
     glm::mat4 newWorldVR = glm::translate(glm::mat4(1.0f), newPos) * glm::mat4_cast(newRot);
     glm::mat4 newViewVR = glm::inverse(newWorldVR);
-    glm::mat3x4 rowMajor = glm::transpose(newViewVR);
 
-    camera.mtx.setLEMatrix(rowMajor);
+    camera.mtx.setLEMatrix(newViewVR);
+
     camera.pos = newPos;
 
     // Set look-at point by offsetting position in view direction
-    glm::vec3 viewDir = -glm::vec3(rowMajor[2]); // Forward direction is -Z in view space
+    glm::vec3 viewDir = -glm::vec3(newViewVR[2]); // Forward direction is -Z in view space
     camera.at = newPos + viewDir;
 
     // Transform world up vector by new rotation
-    glm::vec3 upDir = glm::vec3(rowMajor[1]); // Up direction is +Y in view space
+    glm::vec3 upDir = glm::vec3(newViewVR[1]); // Up direction is +Y in view space
     camera.up = upDir;
 
-    glm::fvec3 yawDegrees = glm::eulerAngles(baseRot);
-    float yawRotation = yawDegrees.x >= 3.0f ? yawDegrees.y : -yawDegrees.y + glm::radians(180.0f);
+
+    //glm::mat4 workingMtx = glm::inverse(glm::lookAtRH(newPos, newPos + glm::vec3(newViewVR[2]), glm::fvec3(0, 1, 0)));
+    //s_lastCameraMtx = workingMtx;
+
+
+    //glm::fvec3 yawDegrees = glm::eulerAngles(baseRot);
+    //float yawRotation = yawDegrees.x >= 3.0f ? yawDegrees.y : -yawDegrees.y + glm::radians(180.0f);
     //Log::print("!! In-game camera position = {}, In-game camera rotation = {} degrees", basePos, yawRotation);
     //Log::print("!! Link's position: {}, Link's rotation = {} degrees", playerPos, playerRot);
 
