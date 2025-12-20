@@ -8,7 +8,6 @@ void CemuHooks::hook_BeginCameraSide(PPCInterpreter_t* hCPU) {
 
     OpenXR::EyeSide side = hCPU->gpr[0] == 0 ? OpenXR::EyeSide::LEFT : OpenXR::EyeSide::RIGHT;
 
-
     Log::print<RENDERING>("");
     Log::print<RENDERING>("===============================================================================");
     Log::print<RENDERING>("{0} {0} {0} {0} {0} {0} {0} {0} {0} {0} {0} {0} {0} {0} {0} {0} {0} {0}", side == OpenXR::EyeSide::LEFT ? "LEFT" : "RIGHT");
@@ -306,6 +305,10 @@ void CemuHooks::hook_GetRenderProjection(PPCInterpreter_t* hCPU) {
 
 void CemuHooks::hook_ModifyLightPrePassProjectionMatrix(PPCInterpreter_t* hCPU) {
     hCPU->instructionPointer = hCPU->sprNew.LR;
+
+    if (VRManager::instance().XR->GetRenderer() == nullptr) {
+        return;
+    }
 
     if (CemuHooks::UseBlackBarsDuringEvents()) {
         return;

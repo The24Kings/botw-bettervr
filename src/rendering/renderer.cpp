@@ -16,6 +16,13 @@ RND_Renderer::~RND_Renderer() {
         checkXRResult(xrEndSession(m_session), "Failed to end OpenXR session!");
         m_session = XR_NULL_HANDLE;
     }
+
+    if (m_layer3D) {
+        m_layer3D.reset();
+    }
+    if (m_layer2D) {
+        m_layer2D.reset();
+    }
 }
 
 void RND_Renderer::StartFrame() {

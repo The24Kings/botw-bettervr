@@ -52,6 +52,11 @@ void VkDeviceOverrides::CmdClearColorImage(const vkroots::VkDeviceDispatch* pDis
         side = OpenXR::EyeSide::RIGHT;
     }
 
+    if (!VRManager::instance().VK) {
+        VRManager::instance().Init(pDispatch->pPhysicalDeviceDispatch->Instance, pDispatch->PhysicalDevice, pDispatch->Device);
+        VRManager::instance().InitSession();
+    }
+
     if (side != (OpenXR::EyeSide)-1) {
         // r value in magical clear value is the capture idx after rounding down
         const long captureIdx = std::lroundf(pColor->float32[0] * 32.0f);
@@ -61,6 +66,10 @@ void VkDeviceOverrides::CmdClearColorImage(const vkroots::VkDeviceDispatch* pDis
         Log::print<RENDERING>("[{}] Clearing color image for {} layer for {} side", frameIdx, captureIdx == 0 ? "3D" : "2D", side == OpenXR::EyeSide::LEFT ? "left" : "right");
 
         auto* renderer = VRManager::instance().XR->GetRenderer();
+        if (!renderer) {
+            Log::print<RENDERING>("Renderer is not initialized yet!");
+            return pDispatch->CmdClearColorImage(commandBuffer, image, imageLayout, pColor, rangeCount, pRanges);
+        }
         auto& layer3D = renderer->m_layer3D;
         auto& layer2D = renderer->m_layer2D;
         auto& imguiOverlay = renderer->m_imguiOverlay;

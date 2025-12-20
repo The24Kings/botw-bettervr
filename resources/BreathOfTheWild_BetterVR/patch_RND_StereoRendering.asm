@@ -797,6 +797,10 @@ stw r0, 0x24(r1)
 stw r11, 0x18(r1)
 stw r12, 0x14(r1)
 
+; random crash fix attempt
+cmpwi r3, 0
+beq exit_custom_sead__Projection__getProjectionMatrix
+
 ; prevent modifying anything but sead::PerspectiveProjection
 lwz r12, 0x90(r3)
 lis r11, seadPerspectiveProjection_vtbl@ha
@@ -823,6 +827,7 @@ mr r31, r3
 bctrl ; bl sead::Projection::updateMatrix
 addi r3, r31, 4
 
+exit_custom_sead__Projection__getProjectionMatrix:
 lwz r12, 0x14(r1)
 lwz r11, 0x18(r1)
 lwz r0, 0x24(r1)

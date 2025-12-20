@@ -182,5 +182,5 @@ private:
     PFN_xrDestroyDebugUtilsMessengerEXT func_xrDestroyDebugUtilsMessengerEXT = nullptr;
 };
 
-
+using EyeSide = OpenXR::EyeSide;
 using GrabButtonState = OpenXR::InputState::InGame::GrabButtonState; 

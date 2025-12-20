@@ -29,10 +29,5 @@ uint32_t RND_Vulkan::FindMemoryType(uint32_t memoryTypeBitsRequirement, VkMemory
 
 
 VkResult VRLayer::VkDeviceOverrides::CreateSwapchainKHR(const vkroots::VkDeviceDispatch* pDispatch, VkDevice device, const VkSwapchainCreateInfoKHR* pCreateInfo, const VkAllocationCallbacks* pAllocator, VkSwapchainKHR* pSwapchain) {
-    if (!VRManager::instance().VK) {
-        VRManager::instance().Init(pDispatch->pPhysicalDeviceDispatch->Instance, pDispatch->PhysicalDevice, device);
-        VRManager::instance().InitSession();
-    }
-
     return pDispatch->CreateSwapchainKHR(device, pCreateInfo, pAllocator, pSwapchain);
 }

@@ -41,7 +41,6 @@ public:
 private:
     VRManager() {
         m_logger = std::make_unique<Log>();
-
         XR = std::make_unique<OpenXR>();
     };
 
