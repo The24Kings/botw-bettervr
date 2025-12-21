@@ -426,16 +426,20 @@ void CemuHooks::hook_ModifyBoneMatrix(PPCInterpreter_t* hCPU) {
     }
 
     // solve upper arm ik so the hands reach the vr controllers
-    if (boneName == "Arm_1_L" || boneName == "Arm_1_R") {
+    if (boneName == "Arm_1_L" || boneName == "Arm_1_R" ||
+        boneName == "Elbow_L" || boneName == "Elbow_R" ||
+        boneName == "Wrist_Assist_L" || boneName == "Wrist_Assist_R") {
+        std::string arm1Name = isLeft ? "Arm_1_L" : "Arm_1_R";
         std::string arm2Name = isLeft ? "Arm_2_L" : "Arm_2_R";
         std::string wristName = isLeft ? "Wrist_L" : "Wrist_R";
         std::string weaponName = isLeft ? "Weapon_L" : "Weapon_R";
 
+        int arm1Index = s_skeleton.GetBoneIndex(arm1Name);
         int arm2Index = s_skeleton.GetBoneIndex(arm2Name);
         int wristIndex = s_skeleton.GetBoneIndex(wristName);
         Bone* weapon = s_skeleton.GetBone(weaponName);
 
-        if (boneIndex != -1 && arm2Index != -1 && wristIndex != -1) {
+        if (arm1Index != -1 && arm2Index != -1 && wristIndex != -1) {
             glm::mat4 handCorrectionMtx = isLeft ? s_handCorrectionRotationLeft : s_handCorrectionRotationRight;
 
             // calculate target wrist world position
@@ -463,7 +467,7 @@ void CemuHooks::hook_ModifyBoneMatrix(PPCInterpreter_t* hCPU) {
 
             float forwardSign = isLeft ? 1.0f : -1.0f;
 
-            s_skeleton.SolveTwoBoneIK(boneIndex, arm2Index, wristIndex, targetPos, poleDir, forwardSign);
+            s_skeleton.SolveTwoBoneIK(arm1Index, arm2Index, wristIndex, targetPos, poleDir, forwardSign);
 
             calculatedLocalMat = s_skeleton.GetBone(boneIndex)->localMatrix;
         }
