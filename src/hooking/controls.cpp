@@ -174,6 +174,17 @@ void CemuHooks::hook_InjectXRInput(PPCInterpreter_t* hCPU) {
         gameState.prevent_menu_time = now;
     }
 
+    if (gameState.prevent_menu_inputs && now >= gameState.prevent_menu_time + delay)
+        gameState.prevent_menu_inputs = false;
+
+    if (gameState.prevent_grab_inputs && now >= gameState.prevent_grab_time + delay)
+        gameState.prevent_grab_inputs = false;
+
+    Log::print<INFO>("last_weapon_held_hand : {}", gameState.last_weapon_held_hand);
+    //Log::print<INFO>("Is weapon held : {}", gameState.is_weapon_held);
+    //Log::print<INFO>("Weapon Type : {}", (int)gameState.left_weapon_type);
+    //Log::print<INFO>("Weapon Type : {}", (int)gameState.right_weapon_type);
+
     if (gameState.in_game) 
     {
         if (!gameState.prevent_menu_inputs) {
@@ -186,8 +197,6 @@ void CemuHooks::hook_InjectXRInput(PPCInterpreter_t* hCPU) {
                 gameState.map_open = false;
             }
         }
-        else if (now >= gameState.prevent_menu_time + delay)
-            gameState.prevent_menu_inputs = false;
 
         //Scope
         if (inputs.inGame.crouchAndScopeState.lastEvent == ButtonState::Event::LongPress) {
@@ -249,22 +258,31 @@ void CemuHooks::hook_InjectXRInput(PPCInterpreter_t* hCPU) {
                     }
                 }
             }
-            else if (now >= gameState.prevent_menu_time + delay) 
-                gameState.prevent_menu_inputs = false;
         }
 
         if (leftHandCloseEnoughFromHead && leftHandBehindHead)
         {
             VRManager::instance().XR->GetRumbleManager()->startSimpleRumble(true, 0.01f, 0.05f, 0.1f);
-            if (inputs.inGame.grabState[0].wasDownLastFrame || inputs.inGame.grabState[1].wasDownLastFrame) {
+            if (!gameState.prevent_grab_inputs && (inputs.inGame.grabState[0].wasDownLastFrame || inputs.inGame.grabState[1].wasDownLastFrame)) {
                 if (gameState.is_weapon_held) {
                     //Equip bow if sword is held
-                    if (gameState.weapon_type != WeaponType::Bow)
+                    if (gameState.left_weapon_type != WeaponType::Bow)
+                    {
                         newXRBtnHold |= VPAD_BUTTON_ZR;
+                        gameState.last_weapon_held_hand = 0;
+                    }
                     //Unequip bow
                     else
                         newXRBtnHold |= VPAD_BUTTON_B;
                 }
+                //Equip bow if no weapon held
+                else
+                {
+                    newXRBtnHold |= VPAD_BUTTON_ZR;
+                    gameState.last_weapon_held_hand = 0;
+                }
+                gameState.prevent_grab_inputs = true;
+                gameState.prevent_grab_time = now;
             }
         }
             
@@ -282,25 +300,32 @@ void CemuHooks::hook_InjectXRInput(PPCInterpreter_t* hCPU) {
                 // Grab
                 else if (!gameState.prevent_grab_inputs)
                     newXRBtnHold |= VPAD_BUTTON_A;
-                else if (now >= gameState.prevent_grab_time + delay)
-                {
-                    gameState.prevent_grab_inputs = false;
-                }
             }
         }
         
         if (rightHandCloseEnoughFromHead && rightHandBehindHead) {
             VRManager::instance().XR->GetRumbleManager()->startSimpleRumble(false, 0.01f, 0.05f, 0.1f);
 
-            if (inputs.inGame.grabState[0].wasDownLastFrame || inputs.inGame.grabState[1].wasDownLastFrame) {
+            if (!gameState.prevent_grab_inputs && (inputs.inGame.grabState[0].wasDownLastFrame || inputs.inGame.grabState[1].wasDownLastFrame)) {
                 if (gameState.is_weapon_held) {
                     //Equip sword if bow is held
-                    if (gameState.weapon_type == WeaponType::Bow)
+                    if (gameState.left_weapon_type == WeaponType::Bow)
+                    {
                         newXRBtnHold |= VPAD_BUTTON_Y;
+                        gameState.last_weapon_held_hand = 1;
+                    }
                     //Unequip sword
                     else
                         newXRBtnHold |= VPAD_BUTTON_B;
                 }
+                //Equip sword if nothing is held
+                else
+                {
+                    newXRBtnHold |= VPAD_BUTTON_Y;
+                    gameState.last_weapon_held_hand = 1;
+                }
+                gameState.prevent_grab_inputs = true;
+                gameState.prevent_grab_time = now;
             }
 
             //Throw weapon right hand
@@ -313,13 +338,18 @@ void CemuHooks::hook_InjectXRInput(PPCInterpreter_t* hCPU) {
         // Trigger attack if weapon equip or throw objects if not
         if (inputs.inGame.rightTrigger.currentState) {
             if (gameState.is_weapon_held) {
-                if (gameState.weapon_type == WeaponType::Bow)
+                if (gameState.left_weapon_type == WeaponType::Bow)
                     newXRBtnHold |= VPAD_BUTTON_ZR;
                 else
                     newXRBtnHold |= VPAD_BUTTON_Y;
             }
-            else
-                newXRBtnHold |= VPAD_BUTTON_R;
+            //reequip the last held weapon when no weapon is held
+            else if (gameState.last_weapon_held_hand == 0)
+                newXRBtnHold |= VPAD_BUTTON_ZR;
+            else if (gameState.last_weapon_held_hand == 1)
+                newXRBtnHold |= VPAD_BUTTON_Y;
+            /* else I need to check if an object is being held to throw it
+                newXRBtnHold |= VPAD_BUTTON_R;*/
         }
 
     }
@@ -333,8 +363,6 @@ void CemuHooks::hook_InjectXRInput(PPCInterpreter_t* hCPU) {
                 newXRBtnHold |= mapXRButtonToVpad(inputs.inMenu.mapAndInventory, VPAD_BUTTON_PLUS);
             }
         }
-        else if (!inputs.inMenu.mapAndInventory.currentState)
-            gameState.prevent_menu_inputs = false;
 
         newXRBtnHold |= mapXRButtonToVpad(inputs.inMenu.select, VPAD_BUTTON_A);
         newXRBtnHold |= mapXRButtonToVpad(inputs.inMenu.back, VPAD_BUTTON_B);
@@ -447,6 +475,10 @@ void CemuHooks::hook_InjectXRInput(PPCInterpreter_t* hCPU) {
 
     // set previous game states
     gameState.was_in_game = gameState.in_game;
+    gameState.is_weapon_held = false; // updated in hook_ChangeWeaponMtx
+    gameState.right_weapon_type = WeaponType::SmallSword; // updated in hook_ChangeWeaponMtx
+    gameState.left_weapon_type = WeaponType::SmallSword; // updated in hook_ChangeWeaponMtx
+
     VRManager::instance().XR->m_gameState.store(gameState);
     VRManager::instance().XR->m_input.store(inputs);
 }

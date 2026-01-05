@@ -76,6 +76,7 @@ public:
             };
             std::array<ButtonState, 2> grabState; // LEFT/RIGHT
             ButtonState runState;
+            ButtonState crouchAndScopeState;
             ButtonState mapAndInventoryState;
             std::array<XrActionStatePose, 2> pose;
             std::array<XrSpaceLocation, 2> poseLocation;
@@ -118,7 +119,9 @@ public:
         std::chrono::steady_clock::time_point prevent_menu_time;
         bool prevent_grab_inputs = false;
         std::chrono::steady_clock::time_point prevent_grab_time;
-        WeaponType weapon_type = WeaponType::SmallSword;
+        WeaponType right_weapon_type = WeaponType::SmallSword;
+        WeaponType left_weapon_type = WeaponType::SmallSword;
+        bool last_weapon_held_hand = 0; // 0 = left, 1 = right
         bool is_weapon_held = false;
     } gameState ;
 
