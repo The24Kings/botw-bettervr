@@ -187,7 +187,7 @@ public:
 
         VkSampler m_sampler = VK_NULL_HANDLE;
 
-        bool m_showAppMS = false;
+        uint8_t m_showAppMS = 0;
         bool m_wasF3Pressed = false;
     };
 

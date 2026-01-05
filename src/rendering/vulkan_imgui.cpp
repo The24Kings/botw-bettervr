@@ -483,7 +483,7 @@ void RND_Renderer::ImGuiOverlay::BeginFrame(long frameIdx, bool renderBackground
         VRManager::instance().Hooks->DrawDebugOverlays();
     }
 
-    if (m_showAppMS) {
+    if ((renderBackground && m_showAppMS == 1) || (m_showAppMS == 2)) {
         DrawFPSOverlay(renderer);
     }
 }
@@ -549,7 +549,10 @@ void RND_Renderer::ImGuiOverlay::Update() {
 
     bool isF3Pressed = GetKeyState(VK_F3) & 0x8000;
     if (isF3Pressed && !m_wasF3Pressed) {
-        m_showAppMS = !m_showAppMS;
+        m_showAppMS++;
+        if (m_showAppMS > 2) {
+            m_showAppMS = 0;
+        }
     }
     m_wasF3Pressed = isF3Pressed;
 
