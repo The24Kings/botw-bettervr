@@ -248,9 +248,16 @@ void CemuHooks::hook_InjectXRInput(PPCInterpreter_t* hCPU) {
         if (leftHandCloseEnoughFromHead && leftHandBehindHead)
         {
             VRManager::instance().XR->GetRumbleManager()->startSimpleRumble(true, 0.01f, 0.05f, 0.1f);
-            //Throw weapon left hand
-            if (inputs.inGame.grabState[0].wasDownLastFrame)
-                newXRBtnHold |= VPAD_BUTTON_R;
+            if (inputs.inGame.grabState[0].wasDownLastFrame || inputs.inGame.grabState[1].wasDownLastFrame) {
+                if (gameState.is_weapon_held) {
+                    //Equip bow if sword is held
+                    if (gameState.weapon_type != WeaponType::Bow)
+                        newXRBtnHold |= VPAD_BUTTON_ZR;
+                    //Unequip bow
+                    else
+                        newXRBtnHold |= VPAD_BUTTON_B;
+                }
+            }
         }
             
         if (!rightHandBehindHead)
@@ -276,13 +283,37 @@ void CemuHooks::hook_InjectXRInput(PPCInterpreter_t* hCPU) {
         
         if (rightHandCloseEnoughFromHead && rightHandBehindHead) {
             VRManager::instance().XR->GetRumbleManager()->startSimpleRumble(false, 0.01f, 0.05f, 0.1f);
+
+            if (inputs.inGame.grabState[0].wasDownLastFrame || inputs.inGame.grabState[1].wasDownLastFrame) {
+                if (gameState.is_weapon_held) {
+                    //Equip sword if bow is held
+                    if (gameState.weapon_type == WeaponType::Bow)
+                        newXRBtnHold |= VPAD_BUTTON_Y;
+                    //Unequip sword
+                    else
+                        newXRBtnHold |= VPAD_BUTTON_B;
+                }
+            }
+
             //Throw weapon right hand
-            if (inputs.inGame.grabState[1].wasDownLastFrame)
+            if (inputs.inGame.rightTrigger.currentState)
                 newXRBtnHold |= VPAD_BUTTON_R;
         }
 
         newXRBtnHold |= mapXRButtonToVpad(inputs.inGame.leftTrigger, VPAD_BUTTON_ZL);
-        newXRBtnHold |= mapXRButtonToVpad(inputs.inGame.rightTrigger, VPAD_BUTTON_ZR);
+
+        // Trigger attack if weapon equip or throw objects if not
+        if (inputs.inGame.rightTrigger.currentState) {
+            if (gameState.is_weapon_held) {
+                if (gameState.weapon_type == WeaponType::Bow)
+                    newXRBtnHold |= VPAD_BUTTON_ZR;
+                else
+                    newXRBtnHold |= VPAD_BUTTON_Y;
+            }
+            else
+                newXRBtnHold |= VPAD_BUTTON_R;
+        }
+
     }
     else {
         if (!gameState.prevent_menu_inputs)
