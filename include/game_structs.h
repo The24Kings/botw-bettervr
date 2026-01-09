@@ -225,6 +225,7 @@ static_assert(offsetof(ActorWiiU, gsysModelPtr) == 0x330, "ActorWiiU.gsysModelPt
 static_assert(offsetof(ActorWiiU, modelOpacity) == 0x33C, "ActorWiiU.modelOpacity offset mismatch");
 static_assert(offsetof(ActorWiiU, modelOpacityRelated) == 0x340, "ActorWiiU.modelOpacityRelated offset mismatch");
 static_assert(offsetof(ActorWiiU, opacityOrDoFlushOpacityToGPU) == 0x436, "ActorWiiU.opacityOrDoFlushOpacityToGPU offset mismatch");
+static_assert(offsetof(ActorWiiU, velocity) == 0x25C, "ActorWiiU.velocity offset mismatch");
 static_assert(sizeof(ActorWiiU) == 0x53C, "ActorWiiU size mismatch");
 
 struct DynamicActor : ActorWiiU {
