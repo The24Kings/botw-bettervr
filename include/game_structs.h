@@ -418,6 +418,16 @@ enum WeaponType : uint32_t {
     ThrowableObject = 6
 };
 
+ struct RumbleParameters {
+     bool prioritizeThisRumble = false;
+     int hand = 0;
+     float oscillationFrequency = 0.0f;
+     bool smoothOscillation = false;
+     double duration = 0;
+     float frequency = 0.0f;
+     float amplitude = 0.0f;
+ };
+
 struct Weapon : WeaponBase {
     PADDED_BYTES(0x72C, 0x870);
     AttackSensorInitArg setupAttackSensor;

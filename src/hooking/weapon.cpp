@@ -233,7 +233,9 @@ void CemuHooks::hook_ChangeWeaponMtx(PPCInterpreter_t* hCPU) {
             equipType = EquipType::Rune;
 
         if (isRightHandWeapon) {
-            gameState.right_equip_type = equipType;          
+            gameState.right_equip_type = equipType;
+            if (gameState.left_equip_type == EquipType::Bow)
+                gameState.right_equip_type = EquipType::Arrow;
         }
         else {
             gameState.left_equip_type = equipType;
@@ -432,7 +434,17 @@ void CemuHooks::hook_EnableWeaponAttackSensor(PPCInterpreter_t* hCPU) {
             rumbleVelocity = 0.0f;
         }
 
-        VRManager::instance().XR->GetRumbleManager()->openXRApplyHapticFeedback(!heldIndex, 0.1f, 0.5f * rumbleVelocity, 0.7f * rumbleVelocity);
+        RumbleParameters rumbleParams = {
+            false,
+            1,
+            0.0f,
+            false,
+            0.1,
+            0.5f * rumbleVelocity,
+            0.7f * rumbleVelocity
+        };
+         
+        VRManager::instance().XR->GetRumbleManager()->enqueueInputsRumbleCommand(rumbleParams);
     }
 }
 

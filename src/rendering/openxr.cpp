@@ -403,7 +403,7 @@ void OpenXR::CreateActions() {
 
     // initialize rumble manager
     m_rumbleManager = std::make_unique<RumbleManager>(m_session, m_rumbleAction);
-    m_rumbleManager.get()->initializeXrPaths(m_instance);
+    m_rumbleManager.get()->initializeXrPathsAndStartTime(m_instance);
 }
 
 void CheckButtonState(bool buttonPressed, ButtonState& buttonState) {

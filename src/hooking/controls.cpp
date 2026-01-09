@@ -124,6 +124,22 @@ void CemuHooks::hook_InjectXRInput(PPCInterpreter_t* hCPU) {
     static uint32_t oldCombinedHold = 0;
     uint32_t newXRBtnHold = 0;
 
+    // initializing rumble parameters
+    RumbleParameters leftHandOverSlotsRumbleParams {
+        true, 0, 0.5f, true, 1.0, 0.25f, 0.25f
+    };
+    RumbleParameters rightHandOverSlotsRumbleParams {
+        true, 1, 0.5f, true, 1.0, 0.25f, 0.25f
+    };
+
+    RumbleParameters leftGrabSlotsRumbleParams{
+        true, 0, 0.5f, false, 0.25, 0.3f, 0.3f
+    };
+    RumbleParameters rightGrabSlotsRumbleParams{
+        true, 1, 0.5f, false, 0.25, 0.3f, 0.3f
+    };
+
+
     // initializing gesture related variables
     bool leftHandBehindHead = false;
     bool rightHandBehindHead = false;
@@ -222,7 +238,7 @@ void CemuHooks::hook_InjectXRInput(PPCInterpreter_t* hCPU) {
     //Log::print<INFO>("Weapon Type : {}", (int)gameState.left_weapon_type);
     //Log::print<INFO>("Weapon Type : {}", (int)gameState.right_weapon_type);
 
-    if (gameState.in_game) 
+    if (gameState.in_game)
     {
         if (!gameState.prevent_menu_inputs) {
             if (inputs.inGame.mapAndInventoryState.lastEvent == ButtonState::Event::LongPress) {
@@ -256,8 +272,10 @@ void CemuHooks::hook_InjectXRInput(PPCInterpreter_t* hCPU) {
             newXRBtnHold |= VPAD_BUTTON_B;
         }
 
-        if (!leftHandBehindHead) {
+        
 
+        if (!leftHandBehindHead) {
+            VRManager::instance().XR->GetRumbleManager()->stopInputsRumble(0);
             if (inputs.inGame.grabState[0].wasDownLastFrame) {
                 // Left Drop - Need dual wield implementation. Dropping left item currently makes the game freak out
                 // and the right weapon disappears. Equipping another sword make both the previous sword and actual appear in hand.
@@ -298,8 +316,15 @@ void CemuHooks::hook_InjectXRInput(PPCInterpreter_t* hCPU) {
         }
         else {
             if (leftHandCloseEnoughFromHead) {
+                //Rumbles when hand over slot when equipped
+                if (!leftHandBodySide && gameState.right_equip_type == EquipType::Melee)
+                    VRManager::instance().XR->GetRumbleManager()->enqueueInputsRumbleCommand(leftHandOverSlotsRumbleParams);
+                else if (leftHandBodySide && gameState.left_equip_type == EquipType::Bow)
+                    VRManager::instance().XR->GetRumbleManager()->enqueueInputsRumbleCommand(leftHandOverSlotsRumbleParams);
+
                 if (!gameState.prevent_grab_inputs && (inputs.inGame.grabState[0].wasDownLastFrame)) {
-                    VRManager::instance().XR->GetRumbleManager()->openXRApplyHapticFeedback(true, 0.2f, 0.2f, 0.2f);
+                    //Rumbles when equipping/unequipping
+                    VRManager::instance().XR->GetRumbleManager()->enqueueInputsRumbleCommand(leftGrabSlotsRumbleParams);
                     // Allows to grab from any side for left hand
                     if (leftHandBodySide) {
                         //Equip bow
@@ -332,8 +357,11 @@ void CemuHooks::hook_InjectXRInput(PPCInterpreter_t* hCPU) {
         }
 
         if (leftHandBehindHeadWithWaistOffset && leftHandCloseEnoughFromWaist) {
+            //Rumbles when hand over slot when equipped
+            if (leftHandBodySide && gameState.left_equip_type == EquipType::Rune)
+                VRManager::instance().XR->GetRumbleManager()->enqueueInputsRumbleCommand(leftHandOverSlotsRumbleParams);
             if (!gameState.prevent_grab_inputs && (inputs.inGame.grabState[0].wasDownLastFrame)) {
-                VRManager::instance().XR->GetRumbleManager()->openXRApplyHapticFeedback(true, 0.2f, 0.2f, 0.2f);
+                VRManager::instance().XR->GetRumbleManager()->enqueueInputsRumbleCommand(leftGrabSlotsRumbleParams);
                 // Allows to grab from any side for left hand
                 if (leftHandBodySide) {
                     // Equip rune
@@ -351,9 +379,11 @@ void CemuHooks::hook_InjectXRInput(PPCInterpreter_t* hCPU) {
             }
             // Rune = VPAD_BUTTON_L
         }
-            
+
+                    
         if (!rightHandBehindHead)
         {
+            VRManager::instance().XR->GetRumbleManager()->stopInputsRumble(1);
             if (inputs.inGame.grabState[1].wasDownLastFrame)
             {
                 //Drop
@@ -370,8 +400,14 @@ void CemuHooks::hook_InjectXRInput(PPCInterpreter_t* hCPU) {
         }
         
         if (rightHandCloseEnoughFromHead && rightHandBehindHead) {
+            //Rumbles when hand over slot when equipped
+            if (rightHandBodySide && gameState.right_equip_type == EquipType::Melee)
+                VRManager::instance().XR->GetRumbleManager()->enqueueInputsRumbleCommand(rightHandOverSlotsRumbleParams);
+            else if (!rightHandBodySide && gameState.left_equip_type == EquipType::Bow)
+                VRManager::instance().XR->GetRumbleManager()->enqueueInputsRumbleCommand(rightHandOverSlotsRumbleParams);
+
             if (!gameState.prevent_grab_inputs && (inputs.inGame.grabState[1].wasDownLastFrame)) {
-                VRManager::instance().XR->GetRumbleManager()->openXRApplyHapticFeedback(false, 0.2f, 0.2f, 0.2f);
+                VRManager::instance().XR->GetRumbleManager()->enqueueInputsRumbleCommand(rightGrabSlotsRumbleParams);
                 // Allows to grab from any side for right hand
                 if (rightHandBodySide) {
                     //Equip sword
@@ -404,7 +440,7 @@ void CemuHooks::hook_InjectXRInput(PPCInterpreter_t* hCPU) {
             //Throw weapon right hand
             if (inputs.inGame.rightTrigger.currentState)
             {
-                VRManager::instance().XR->GetRumbleManager()->openXRApplyHapticFeedback(false, 0.2f, 0.2f, 0.2f);
+                VRManager::instance().XR->GetRumbleManager()->enqueueInputsRumbleCommand(rightGrabSlotsRumbleParams);
                 newXRBtnHold |= VPAD_BUTTON_R;
             }
         }
@@ -413,7 +449,7 @@ void CemuHooks::hook_InjectXRInput(PPCInterpreter_t* hCPU) {
 
         // Trigger attack if weapon equip or throw objects if not
         if (inputs.inGame.rightTrigger.currentState) {
-            VRManager::instance().XR->GetRumbleManager()->openXRApplyHapticFeedback(false, 0.2f, 0.2f, 0.2f);
+            VRManager::instance().XR->GetRumbleManager()->enqueueInputsRumbleCommand(rightGrabSlotsRumbleParams);
             if (gameState.has_something_in_hand) {
                 //object throw 
                 if (gameState.is_throwable_object_held)
@@ -438,7 +474,7 @@ void CemuHooks::hook_InjectXRInput(PPCInterpreter_t* hCPU) {
 
         if (inputs.inGame.leftTrigger.currentState) {
             if (gameState.left_equip_type == EquipType::Rune) {
-                VRManager::instance().XR->GetRumbleManager()->openXRApplyHapticFeedback(false, 0.2f, 0.2f, 0.2f);
+                VRManager::instance().XR->GetRumbleManager()->enqueueInputsRumbleCommand(rightGrabSlotsRumbleParams);
                 newXRBtnHold |= VPAD_BUTTON_B;
             }
         }
@@ -472,6 +508,9 @@ void CemuHooks::hook_InjectXRInput(PPCInterpreter_t* hCPU) {
             }
         }
     }
+
+    // consume rumble commands :
+    VRManager::instance().XR->GetRumbleManager()->updateHaptics();
 
     // sticks
     static uint32_t oldXRStickHold = 0;
