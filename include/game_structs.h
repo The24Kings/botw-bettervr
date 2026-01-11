@@ -167,8 +167,8 @@ enum ActorFlags3 : int32_t {
 
 struct ActorWiiU : BaseProc {
     PADDED_BYTES(0xEC, 0xF0);
-    uint32_t physicsMainBodyPtr; // 0xF4
-    uint32_t physicsTgtBodyPtr; // 0xF8
+    BEType<uint32_t> physicsMainBodyPtr; // 0xF4
+    BEType<uint32_t> physicsTgtBodyPtr;  // 0xF8
     uint8_t unk_FC[0x1F8 - 0xFC];
     BEMatrix34 mtx;
     uint32_t physicsMtxPtr;
