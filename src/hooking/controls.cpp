@@ -326,7 +326,7 @@ void handleRightHandInGameInput(
     
     auto* rumbleMgr = VRManager::instance().XR->GetRumbleManager();
     bool isGrabPressed = inputs.inGame.grabState[1].lastEvent == ButtonState::Event::ShortPress;
-    bool isTriggerPressed = inputs.inGame.rightTrigger.currentState;
+    bool isTriggerPressed = inputs.inGame.useRightItem.currentState;
     
     // Handle shoulder slot interactions
     if (isHandOverLeftShoulderSlot(rightGesture) || isHandOverRightShoulderSlot(rightGesture)) {
@@ -429,7 +429,7 @@ void handleLeftTriggerBindings(
     OpenXR::GameState& gameState,
     HandGestureState leftGesture
 ) {
-    if (!inputs.inGame.leftTrigger.currentState) {
+    if (!inputs.inGame.useLeftItem.currentState) {
         return;
     }
     
@@ -461,7 +461,7 @@ void handleRightTriggerBindings(
     OpenXR::InputState& inputs,
     OpenXR::GameState& gameState
 ) {
-    if (!inputs.inGame.rightTrigger.currentState) {
+    if (!inputs.inGame.useRightItem.currentState) {
         return;
     }
     
@@ -513,16 +513,15 @@ void handleMenuInput(
         return state.currentState ? btn : 0;
     };
     
-    if (!gameState.prevent_menu_inputs) {
-        if (gameState.map_open) {
-            buttonHold |= mapButton(inputs.inMenu.mapAndInventory, VPAD_BUTTON_MINUS);
-        } else {
-            buttonHold |= mapButton(inputs.inMenu.mapAndInventory, VPAD_BUTTON_PLUS);
-        }
+    if (!gameState.prevent_inputs) {
+        buttonHold |= mapButton(inputs.inMenu.back, VPAD_BUTTON_B);
+        //if (gameState.map_open)
+        //    buttonHold |= mapButton(inputs.inMenu.quitMenu, VPAD_BUTTON_MINUS);
+        //else
+        //    buttonHold |= mapButton(inputs.inMenu.quitMenu, VPAD_BUTTON_PLUS);
     }
-    
+
     buttonHold |= mapButton(inputs.inMenu.select, VPAD_BUTTON_A);
-    buttonHold |= mapButton(inputs.inMenu.back, VPAD_BUTTON_B);
     buttonHold |= mapButton(inputs.inMenu.sort, VPAD_BUTTON_Y);
     buttonHold |= mapButton(inputs.inMenu.hold, VPAD_BUTTON_X);
     buttonHold |= mapButton(inputs.inMenu.leftTrigger, VPAD_BUTTON_L);
@@ -569,14 +568,14 @@ void CemuHooks::hook_InjectXRInput(PPCInterpreter_t* hCPU) {
     constexpr std::chrono::milliseconds delay{ 400 };
     const auto now = std::chrono::steady_clock::now();
 
-    // check if we need to prevent inputs from happening (fix menu reopening when exiting it and grab object when quitting dpad menu)
+    // check if we need to prevent inputs from happening
     if (gameState.in_game != gameState.was_in_game) {
-        gameState.prevent_menu_inputs = true;
-        gameState.prevent_menu_time = now;
+        gameState.prevent_inputs = true;
+        gameState.prevent_inputs_time = now;
     }
 
-    if (gameState.prevent_menu_inputs && now >= gameState.prevent_menu_time + delay)
-        gameState.prevent_menu_inputs = false;
+    if (gameState.prevent_inputs && now >= gameState.prevent_inputs_time + delay)
+        gameState.prevent_inputs = false;
 
     if (gameState.prevent_grab_inputs && now >= gameState.prevent_grab_time + delay)
         gameState.prevent_grab_inputs = false;
@@ -612,7 +611,7 @@ void CemuHooks::hook_InjectXRInput(PPCInterpreter_t* hCPU) {
             default: break;
         }
 
-        if (inputs.inMenu.select.currentState || inputs.inMenu.back.currentState)
+        if (inputs.inMenu.select.currentState || inputs.inMenu.back.currentState) // need to add a way to quit dpad menu by pressing again grips
         {
             gameState.dpad_menu_open = false;
             gameState.last_dpad_menu_open = Direction::None;
@@ -624,28 +623,25 @@ void CemuHooks::hook_InjectXRInput(PPCInterpreter_t* hCPU) {
     // Process input
     if (gameState.in_game) {
         // Handle menu toggle
-        if (!gameState.prevent_menu_inputs) {
-            if (inputs.inGame.mapAndInventoryState.lastEvent == ButtonState::Event::LongPress) {
+        if (!gameState.prevent_inputs) {
+            if (inputs.inGame.map.currentState) {
                 newXRBtnHold |= VPAD_BUTTON_MINUS;
                 gameState.map_open = true;
             }
-            if (inputs.inGame.mapAndInventoryState.lastEvent == ButtonState::Event::ShortPress) {
+            if (inputs.inGame.inventory.currentState) {
                 newXRBtnHold |= VPAD_BUTTON_PLUS;
                 gameState.map_open = false;
             }
         }
-        
-        // Handle crouch and scope
-        if (inputs.inGame.crouchAndScopeState.lastEvent == ButtonState::Event::LongPress) {
-            newXRBtnHold |= VPAD_BUTTON_STICK_R;  // Scope
-        }
-        if (inputs.inGame.crouchAndScopeState.lastEvent == ButtonState::Event::ShortPress) {
-            newXRBtnHold |= VPAD_BUTTON_STICK_L;  // Crouch
-        }
-        
+             
         // Basic actions
-        newXRBtnHold |= mapXRButtonToVpad(inputs.inGame.jump, VPAD_BUTTON_X);
-        newXRBtnHold |= mapXRButtonToVpad(inputs.inGame.interact, VPAD_BUTTON_A);
+        newXRBtnHold |= mapXRButtonToVpad(inputs.inGame.scope, VPAD_BUTTON_STICK_R);
+        newXRBtnHold |= mapXRButtonToVpad(inputs.inGame.crouch, VPAD_BUTTON_STICK_L);
+        newXRBtnHold |= mapXRButtonToVpad(inputs.inGame.run_interact_cancel, VPAD_BUTTON_A);
+
+        // prevent jump when exiting menus with B button
+        if (!gameState.prevent_inputs)
+            newXRBtnHold |= mapXRButtonToVpad(inputs.inGame.jump, VPAD_BUTTON_X);
         
         if (inputs.inGame.runState.lastEvent == ButtonState::Event::LongPress) {
             newXRBtnHold |= VPAD_BUTTON_B;  // Run
