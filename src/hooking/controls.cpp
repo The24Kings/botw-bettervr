@@ -219,13 +219,13 @@ void handleLeftHandInGameInput(
     bool isGrabPressed = inputs.inGame.grabState[0].lastEvent == ButtonState::Event::ShortPress;
     
     // Handle shield
-    if (gameState.left_equip_type == EquipType::Shield && (inputs.inGame.leftTrigger.currentState || leftGesture.isNearChestHeight)) {
+    if (gameState.left_equip_type == EquipType::Shield && (leftGesture.isNearChestHeight)) {
         buttonHold |= VPAD_BUTTON_ZL;
         rightStickSource.currentState.y = 0.2f; // Force disable the lock on view when holding shield
     }
     // Handle Parry gesture
     auto handVelocity = glm::length(ToGLM(inputs.inGame.poseVelocity[0].linearVelocity));
-    if (handVelocity > 2.5f && gameState.left_equip_type == EquipType::Shield && leftGesture.isNearChestHeight) {
+    if (handVelocity > 4.0f && gameState.left_equip_type == EquipType::Shield && leftGesture.isNearChestHeight) {
         buttonHold |= VPAD_BUTTON_A;
     }
 
