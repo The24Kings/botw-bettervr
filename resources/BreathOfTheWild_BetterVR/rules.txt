@@ -22,6 +22,12 @@ $buggyAngularVelocity:int = 0 # Whether the angular velocity is wrongly provided
 $cutsceneCameraMode:int = 1
 $cutsceneBlackBars:int = 1
 
+$accessibilityUIColor:int = 0
+$accessibilityUIColor_x = 0.000
+$accessibilityUIColor_y = 0.804
+$accessibilityUIColor_z = 1.000
+$accessibilityUIColor_w = 1.000
+
 
 # Camera Mode
 [Preset]
@@ -101,21 +107,6 @@ name = Use Fullscreen During Third-Person Cutscenes (Recommended For Brave Peopl
 category = Cutscene Black Bars
 default = 1
 $cutsceneBlackBars:int = 0
-
-
-# 2D Viewer - Crop VR Image To 16:9
-[Preset]
-name = Crop 3D Game World To 16:9 (Recommended)
-category = Crop VR Image
-condition = $enable2DView == 1
-default = 1
-$cropFlatTo16_9:int = 1
-
-[Preset]
-name = Crop 3D Game World To 4:3
-category = Crop VR Image
-condition = $enable2DView == 1
-$cropFlatTo16_9:int = 0
 
 
 # GUI Follow Mode
@@ -247,6 +238,48 @@ name = Extreme
 category = Camera Distance
 condition = $cameraMode == 0
 $cameraDistance = 0.9
+
+
+# Accessibility UI Color
+
+[Preset]
+name = Use Default Colors (Default, White)
+category = More Contrasty UI For Crosshair, Buttons etc.
+default = 1
+$accessibilityUIColor:int = 0
+
+[Preset]
+name = Thematic Cyan (Best Looking Preset)
+category = More Contrasty UI For Crosshair, Buttons etc.
+$accessibilityUIColor:int = 1
+$accessibilityUIColor_x = 0.000
+$accessibilityUIColor_y = 0.804
+$accessibilityUIColor_z = 1.000
+$accessibilityUIColor_w = 1.000
+
+[Preset]
+name = Bright Purple (Most Visible Preset)
+category = More Contrasty UI For Crosshair, Buttons etc.
+$accessibilityUIColor:int = 1
+$accessibilityUIColor_x = 0.6728
+$accessibilityUIColor_y = 0.0
+$accessibilityUIColor_z = 0.3272
+$accessibilityUIColor_w = 1.000
+
+
+# 2D Viewer - Crop VR Image To 16:9
+[Preset]
+name = Crop 3D Game World To 16:9 (Recommended)
+category = Crop VR Image
+condition = $enable2DView == 1
+default = 1
+$cropFlatTo16_9:int = 1
+
+[Preset]
+name = Crop 3D Game World To 4:3
+category = Crop VR Image
+condition = $enable2DView == 1
+$cropFlatTo16_9:int = 0
 
 
 # Debug Overlay
