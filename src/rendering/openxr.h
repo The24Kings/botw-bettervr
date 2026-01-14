@@ -30,6 +30,11 @@ public:
             XrTime inputTime;
             std::optional<EyeSide> lastPickupSide = std::nullopt;
 
+            std::array<XrActionStatePose, 2> pose;
+            std::array<XrSpaceLocation, 2> poseLocation;
+            std::array<XrSpaceVelocity, 2> poseVelocity;
+            std::array<XrSpaceLocation, 2> hmdRelativePoseLocation;
+
             // unique
             XrActionStateVector2f move;
             XrActionStateVector2f camera;
@@ -75,17 +80,16 @@ public:
             std::array<ButtonState, 2> grabState; // LEFT/RIGHT
             ButtonState runState;
 
-            std::array<XrActionStatePose, 2> pose;
-            std::array<XrSpaceLocation, 2> poseLocation;
-            std::array<XrSpaceVelocity, 2> poseVelocity;
-            // todo: remove relative controller positions if it turns out to be unnecessary
-            std::array<XrSpaceLocation, 2> hmdRelativePoseLocation;
-
         } inGame;
         struct InMenu {
             bool in_game = false;
             XrTime inputTime;
             std::optional<EyeSide> lastPickupSide = std::nullopt;
+
+            std::array<XrActionStatePose, 2> pose;
+            std::array<XrSpaceLocation, 2> poseLocation;
+            std::array<XrSpaceVelocity, 2> poseVelocity;
+            std::array<XrSpaceLocation, 2> hmdRelativePoseLocation;
 
             // unique
             XrActionStateVector2f scroll;
@@ -164,10 +168,13 @@ private:
     std::array<XrSpace, 2> m_handSpaces = { XR_NULL_HANDLE, XR_NULL_HANDLE };
     std::array<XrPath, 2> m_handPaths = { XR_NULL_PATH, XR_NULL_PATH };
 
+    XrAction m_inGameGripPoseAction = XR_NULL_HANDLE;
+    XrAction m_inGameAimPoseAction = XR_NULL_HANDLE;
+    XrAction m_inMenuGripPoseAction = XR_NULL_HANDLE;
+    XrAction m_inMenuAimPoseAction = XR_NULL_HANDLE;
+
     // gameplay actions
     XrActionSet m_gameplayActionSet = XR_NULL_HANDLE;
-    XrAction m_gripPoseAction = XR_NULL_HANDLE;
-    XrAction m_aimPoseAction = XR_NULL_HANDLE;
     XrAction m_moveAction = XR_NULL_HANDLE;
     XrAction m_cameraAction = XR_NULL_HANDLE;
     XrAction m_crouchAction = XR_NULL_HANDLE;
