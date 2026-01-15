@@ -10,7 +10,6 @@ public:
     ~RND_D3D12();
 
     ID3D12Device* GetDevice() { return m_device.Get(); };
-
     ID3D12CommandQueue* GetCommandQueue() { return m_queue.Get(); };
 
     void StartFrame() {

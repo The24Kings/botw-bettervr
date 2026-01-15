@@ -87,6 +87,25 @@ void VkDeviceOverrides::CmdClearColorImage(const vkroots::VkCommandBufferDispatc
 
                     layer3D = std::make_unique<RND_Renderer::Layer3D>(it->second.first, swapchainRes);
                     layer2D = std::make_unique<RND_Renderer::Layer2D>(it->second.first, swapchainRes);
+                    for (auto& textures : layer3D->GetSharedTextures()) {
+                        for (auto& texture : textures) {
+                            ID3D12CommandQueue& queue = *VRManager::instance().D3D12->GetCommandQueue();
+                            ID3D12Device& device = *VRManager::instance().D3D12->GetDevice();
+                            texture->Init(commandBuffer);
+                        }
+                    }
+                    for (auto& textures : layer3D->GetDepthSharedTextures()) {
+                        for (auto& texture : textures) {
+                            ID3D12CommandQueue& queue = *VRManager::instance().D3D12->GetCommandQueue();
+                            ID3D12Device& device = *VRManager::instance().D3D12->GetDevice();
+                            texture->Init(commandBuffer);
+                        }
+                    }
+                    for (auto& texture : layer2D->GetSharedTextures()) {
+                        ID3D12CommandQueue& queue = *VRManager::instance().D3D12->GetCommandQueue();
+                        ID3D12Device& device = *VRManager::instance().D3D12->GetDevice();
+                        texture->Init(commandBuffer);
+                    }
 
                     Log::print<INFO>("Found rendering resolution {}x{} @ {} using capture #{}", it->second.first.width, it->second.first.height, it->second.second, captureIdx);
                     imguiOverlay = std::make_unique<RND_Renderer::ImGuiOverlay>(commandBuffer, it->second.first.width, it->second.first.height, VK_FORMAT_A2B10G10R10_UNORM_PACK32);
@@ -212,10 +231,12 @@ void VkDeviceOverrides::CmdClearColorImage(const vkroots::VkCommandBufferDispatc
                     SharedTexture* texture = layer2D->CopyColorToLayer(commandBuffer, image, frameIdx);
                     renderer->On2DCopied(frameIdx);
 
+                    returnToLayout();
                     {
                         std::lock_guard lk(s_activeCopyMutex);
                         s_activeCopyOperations.emplace_back(commandBuffer, texture);
                     }
+                    return;
                 }
             }
             if (side == OpenXR::EyeSide::RIGHT) {
@@ -226,12 +247,13 @@ void VkDeviceOverrides::CmdClearColorImage(const vkroots::VkCommandBufferDispatc
                     imguiOverlay->Update();
                     imguiOverlay->Render();
                     imguiOverlay->DrawAndCopyToImage(commandBuffer, image, frameIdx);
+                    returnToLayout();
                     return;
                 }
 
                 if (hudCopied) {
-                    // AMD GPU FIX: Use local VkClearColorValue instead of const_cast to avoid UB
                     VkClearColorValue clearColor = {{ 0.0f, 0.0f, 0.0f, 0.0f }};
+                    returnToLayout();
                     return pDispatch.CmdClearColorImage(commandBuffer, image, imageLayout, &clearColor, rangeCount, pRanges);
                 }
             }

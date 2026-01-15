@@ -111,6 +111,7 @@ class SharedTexture : public Texture, public BaseVulkanTexture {
 public:
     SharedTexture(uint32_t width, uint32_t height, VkFormat vkFormat, DXGI_FORMAT d3d12Format);
     ~SharedTexture() override;
+    void Init(const VkCommandBuffer& cmdBuffer);
 
     // srcImageLayout: the ACTUAL current layout of srcImage (e.g., from Cemu's CmdClearColorImage hook)
     void CopyFromVkImage(VkCommandBuffer cmdBuffer, VkImage srcImage);

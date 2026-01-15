@@ -122,6 +122,8 @@ public:
 
         float GetAspectRatio(OpenXR::EyeSide side) const { return m_recommendedAspectRatios[side]; }
         long GetCurrentFrameIdx() const { return m_currentFrameIdx; }
+        auto& GetSharedTextures() { return m_textures; }
+        auto& GetDepthSharedTextures() { return m_depthTextures; }
 
     private:
         std::array<std::unique_ptr<Swapchain<DXGI_FORMAT_R8G8B8A8_UNORM_SRGB>>, 2> m_swapchains;
@@ -153,6 +155,7 @@ public:
         void Render(long frameIdx);
         std::vector<XrCompositionLayerQuad> FinishRendering(XrTime predictedDisplayTime, long frameIdx);
         long GetCurrentFrameIdx() const { return m_currentFrameIdx; }
+        auto& GetSharedTextures() { return m_textures; }
 
     private:
         std::unique_ptr<Swapchain<DXGI_FORMAT_R8G8B8A8_UNORM_SRGB>> m_swapchain;

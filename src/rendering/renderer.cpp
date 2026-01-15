@@ -181,23 +181,6 @@ RND_Renderer::Layer3D::Layer3D(VkExtent2D inputRes, VkExtent2D outputRes) {
         this->m_depthTextures[OpenXR::EyeSide::LEFT][i]->d3d12GetTexture()->SetName(L"Layer3D - Left Depth Texture");
         this->m_depthTextures[OpenXR::EyeSide::RIGHT][i]->d3d12GetTexture()->SetName(L"Layer3D - Right Depth Texture");
     }
-
-    ComPtr<ID3D12CommandAllocator> cmdAllocator;
-    {
-        ID3D12Device* d3d12Device = VRManager::instance().D3D12->GetDevice();
-        ID3D12CommandQueue* d3d12Queue = VRManager::instance().D3D12->GetCommandQueue();
-        d3d12Device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&cmdAllocator));
-
-        RND_D3D12::CommandContext<true> transitionInitialTextures(d3d12Device, d3d12Queue, cmdAllocator.Get(), [this](RND_D3D12::CommandContext<true>* context) {
-            context->GetRecordList()->SetName(L"transitionInitialTextures");
-            for (int i = 0; i < 2; ++i) {
-                this->m_textures[OpenXR::EyeSide::LEFT][i]->d3d12TransitionLayout(context->GetRecordList(), D3D12_RESOURCE_STATE_COMMON);
-                this->m_textures[OpenXR::EyeSide::RIGHT][i]->d3d12TransitionLayout(context->GetRecordList(), D3D12_RESOURCE_STATE_COMMON);
-                this->m_depthTextures[OpenXR::EyeSide::LEFT][i]->d3d12TransitionLayout(context->GetRecordList(), D3D12_RESOURCE_STATE_COMMON);
-                this->m_depthTextures[OpenXR::EyeSide::RIGHT][i]->d3d12TransitionLayout(context->GetRecordList(), D3D12_RESOURCE_STATE_COMMON);
-            }
-        });
-    }
 }
 
 RND_Renderer::Layer3D::~Layer3D() {
