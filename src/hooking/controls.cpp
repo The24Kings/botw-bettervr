@@ -148,13 +148,13 @@ void handleLeftHandInGameInput(
         buttonHold |= VPAD_BUTTON_ZL;
         rightStickSource.currentState.y = 0.2f; // Force disable the lock on view when holding shield
         gameState.is_shield_guarding = true;
-        if ((gameState.previousButtonHold & VPAD_BUTTON_ZL) == 0)
+        if ((gameState.previous_button_hold & VPAD_BUTTON_ZL) == 0)
             rumbleMgr->enqueueInputsRumbleCommand(grabSlotRumble);
     }
     else if (!inputs.inGame.useLeftItem.currentState)
         gameState.is_shield_guarding = false;
 
-    if (!gameState.is_shield_guarding && gameState.previousButtonHold & VPAD_BUTTON_ZL)
+    if (!gameState.is_shield_guarding && gameState.previous_button_hold & VPAD_BUTTON_ZL)
         rumbleMgr->enqueueInputsRumbleCommand(grabSlotRumble);
 
     // Handle Parry gesture
@@ -375,7 +375,7 @@ void handleLeftTriggerBindings(
         //Guard + lock on
         if (gameState.last_item_held != EquipType::Rune) {
             // Reset the guard state to trigger again the lock on camera
-            if (!gameState.is_locking_on_target && gameState.previousButtonHold & VPAD_BUTTON_ZL)
+            if (!gameState.is_locking_on_target && gameState.previous_button_hold & VPAD_BUTTON_ZL)
                 buttonHold &= ~VPAD_BUTTON_ZL;
             else
             {
@@ -501,11 +501,15 @@ void CemuHooks::hook_InjectXRInput(PPCInterpreter_t* hCPU) {
     inputs.inGame.drop_weapon[0] = inputs.inGame.drop_weapon[1] = false;
 
     // fetch game state
-    auto gameState = VRManager::instance().XR->m_gameState.load();
+    auto gameState = VRManager::instance().XR->m_gameState.load(); 
     gameState.in_game = inputs.inGame.in_game;
 
+    // use the previous values if no new values are written from hook_ChangeWeaponMtx this frame
+    if (!gameState.left_equip_type_set_this_frame) gameState.left_equip_type = gameState.previous_left_equip_type;
+    if (!gameState.right_equip_type_set_this_frame) gameState.right_equip_type = gameState.previous_right_equip_type;
+
     // buttons
-    static uint32_t oldCombinedHold = 0;
+    static uint32_t oldCombinedHold = 0; 
     uint32_t newXRBtnHold = 0;
 
     // fetching stick inputs
@@ -734,12 +738,16 @@ void CemuHooks::hook_InjectXRInput(PPCInterpreter_t* hCPU) {
     hCPU->gpr[3] = 1;
 
     // (re)set values for next frame
-    gameState.previousButtonHold = newXRBtnHold;
+    gameState.previous_button_hold = newXRBtnHold;
     gameState.was_in_game = gameState.in_game;
     gameState.has_something_in_hand = false; // updated in hook_ChangeWeaponMtx
     gameState.is_throwable_object_held = false; // updated in hook_ChangeWeaponMtx
-    gameState.right_equip_type = EquipType::None; // updated in hook_ChangeWeaponMtx
+    gameState.previous_left_equip_type = gameState.left_equip_type; // use the previous values if no new values are written from hook_ChangeWeaponMtx this frame
+    gameState.previous_right_equip_type = gameState.right_equip_type; // use the previous values if no new values are written from hook_ChangeWeaponMtx this frame
     gameState.left_equip_type = EquipType::None; // updated in hook_ChangeWeaponMtx
+    gameState.right_equip_type = EquipType::None; // updated in hook_ChangeWeaponMtx
+    gameState.left_equip_type_set_this_frame = false; // updated in hook_ChangeWeaponMtx
+    gameState.right_equip_type_set_this_frame = false; // updated in hook_ChangeWeaponMtx
 
     VRManager::instance().XR->m_gameState.store(gameState);
     VRManager::instance().XR->m_input.store(inputs);

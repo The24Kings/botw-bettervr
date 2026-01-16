@@ -118,7 +118,9 @@ public:
     std::atomic<glm::fquat> m_inputCameraRotation = glm::identity<glm::fquat>();
 
     struct GameState {
-        uint32_t previousButtonHold;
+        bool left_equip_type_set_this_frame = false;
+        bool right_equip_type_set_this_frame = false;
+        uint32_t previous_button_hold;
         bool in_game = false;
         bool was_in_game = false;
         bool map_open = false; // map = true, inventory = false
@@ -131,6 +133,8 @@ public:
         std::chrono::steady_clock::time_point prevent_grab_time;
         EquipType right_equip_type = EquipType::None;
         EquipType left_equip_type = EquipType::None;
+        EquipType previous_right_equip_type = EquipType::None;
+        EquipType previous_left_equip_type = EquipType::None;
         EquipType last_item_held = EquipType::None;
         bool has_something_in_hand = false; // true if either a weapon or a throwable object is held
         bool is_throwable_object_held = false; // true if a throwable object is held

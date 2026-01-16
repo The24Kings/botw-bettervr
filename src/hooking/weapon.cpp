@@ -239,9 +239,11 @@ void CemuHooks::hook_ChangeWeaponMtx(PPCInterpreter_t* hCPU) {
             gameState.right_equip_type = equipType;
             if (gameState.left_equip_type == EquipType::Bow)
                 gameState.right_equip_type = EquipType::Arrow;
+            gameState.right_equip_type_set_this_frame = true;
         }
         else {
             gameState.left_equip_type = equipType;
+            gameState.left_equip_type_set_this_frame = true;
         }
         VRManager::instance().XR->m_gameState.store(gameState);
 
