@@ -673,7 +673,7 @@ std::optional<OpenXR::InputState> OpenXR::UpdateActions(XrTime predictedFrameTim
         checkXRResult(xrGetActionStateBoolean(m_session, &getUseRuneInfo, &newState.inGame.useRune_dpadMenu), "Failed to get use rune action value!");
 
         auto& useRuneAction = newState.inGame.useRune_dpadMenu;
-        auto& useRuneButtonState = newState.inGame.useRune_dpadMenuState;
+        auto& useRuneButtonState = newState.inGame.useRune_runeMenuState;
         if (useRuneAction.isActive == XR_TRUE) {
             auto buttonPressed = useRuneAction.currentState == XR_TRUE;
             CheckButtonState(buttonPressed, useRuneButtonState);

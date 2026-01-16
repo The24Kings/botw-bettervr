@@ -82,7 +82,7 @@ public:
             std::array<ButtonState, 2> grabState; // LEFT/RIGHT
             ButtonState runState;
             ButtonState map_scopeState;
-            ButtonState useRune_dpadMenuState;
+            ButtonState useRune_runeMenuState;
 
         } inGame;
         struct InMenu {
@@ -118,10 +118,12 @@ public:
     std::atomic<glm::fquat> m_inputCameraRotation = glm::identity<glm::fquat>();
 
     struct GameState {
+        uint32_t previousButtonHold;
         bool in_game = false;
         bool was_in_game = false;
         bool map_open = false; // map = true, inventory = false
         bool dpad_menu_open = false;
+        bool rune_menu_open = false;
         Direction last_dpad_menu_open = Direction::None;
         bool prevent_inputs = false;
         std::chrono::steady_clock::time_point prevent_inputs_time;
@@ -133,6 +135,8 @@ public:
         bool has_something_in_hand = false; // true if either a weapon or a throwable object is held
         bool is_throwable_object_held = false; // true if a throwable object is held
         float left_hand_velocity = 0.0f;
+        bool is_locking_on_target = false;
+        bool is_shield_guarding = false;
         bool is_riding_horse = false;
     } gameState ;
     std::atomic<GameState> m_gameState{};

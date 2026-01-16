@@ -143,14 +143,25 @@ void handleLeftHandInGameInput(
     bool isGrabPressed = inputs.inGame.grabState[0].lastEvent == ButtonState::Event::ShortPress;
     
     // Handle shield
-    if (gameState.left_equip_type == EquipType::Shield && (leftGesture.isNearChestHeight)) {
+    // if shield with lock on isn't already being used with left trigger, use gesture to guard without lock on instead.
+    if (!inputs.inGame.useLeftItem.currentState && gameState.left_equip_type == EquipType::Shield && (leftGesture.isNearChestHeight)) {
         buttonHold |= VPAD_BUTTON_ZL;
         rightStickSource.currentState.y = 0.2f; // Force disable the lock on view when holding shield
+        gameState.is_shield_guarding = true;
+        if ((gameState.previousButtonHold & VPAD_BUTTON_ZL) == 0)
+            rumbleMgr->enqueueInputsRumbleCommand(grabSlotRumble);
     }
+    else if (!inputs.inGame.useLeftItem.currentState)
+        gameState.is_shield_guarding = false;
+
+    if (!gameState.is_shield_guarding && gameState.previousButtonHold & VPAD_BUTTON_ZL)
+        rumbleMgr->enqueueInputsRumbleCommand(grabSlotRumble);
+
     // Handle Parry gesture
     auto handVelocity = glm::length(ToGLM(inputs.inGame.poseVelocity[0].linearVelocity));
     if (handVelocity > 4.0f && gameState.left_equip_type == EquipType::Shield && leftGesture.isNearChestHeight) {
         buttonHold |= VPAD_BUTTON_A;
+        rumbleMgr->enqueueInputsRumbleCommand(grabSlotRumble);
     }
 
     // Handle shoulder slot interactions
@@ -351,18 +362,29 @@ void handleLeftTriggerBindings(
     OpenXR::GameState& gameState,
     HandGestureState leftGesture
 ) {
-    if (!inputs.inGame.useLeftItem.currentState) {
-        return;
-    }
-    
     RumbleParameters leftRumble = { true, 0, 0.5f, false, 0.25, 0.3f, 0.3f };
     auto* rumbleMgr = VRManager::instance().XR->GetRumbleManager();
 
+    if (!inputs.inGame.useLeftItem.currentState) {
+        // reset lock on state when trigger is released
+        gameState.is_locking_on_target = false;
+        return;
+    }
+
     if (gameState.has_something_in_hand) {
-        //Parry
-        if (gameState.left_equip_type == EquipType::Shield && leftGesture.isNearChestHeight) {
-            buttonHold |= VPAD_BUTTON_A;
-            rumbleMgr->enqueueInputsRumbleCommand(leftRumble);
+        //Guard + lock on
+        if (gameState.last_item_held != EquipType::Rune) {
+            // Reset the guard state to trigger again the lock on camera
+            if (!gameState.is_locking_on_target && gameState.previousButtonHold & VPAD_BUTTON_ZL)
+                buttonHold &= ~VPAD_BUTTON_ZL;
+            else
+            {
+                if (!gameState.is_locking_on_target)
+                    rumbleMgr->enqueueInputsRumbleCommand(leftRumble);
+                buttonHold |= VPAD_BUTTON_ZL;
+                gameState.is_locking_on_target = true;
+                gameState.is_shield_guarding = true;
+            }
         }
         else if (gameState.left_equip_type == EquipType::Rune) {
             buttonHold |= VPAD_BUTTON_A;  // Use rune
@@ -419,9 +441,6 @@ void handleRightTriggerBindings(
             buttonHold |= VPAD_BUTTON_ZR;
             rumbleMgr->enqueueInputsRumbleCommand(rightRumble);
         }
-        //else if (gameState.last_item_held == EquipType::Rune) {
-        //    buttonHold |= VPAD_BUTTON_L;
-        //}
     }
 }
 
@@ -444,10 +463,20 @@ void handleMenuInput(
     }
 
     buttonHold |= mapButton(inputs.inMenu.select, VPAD_BUTTON_A);
-    buttonHold |= mapButton(inputs.inMenu.sort, VPAD_BUTTON_Y);
     buttonHold |= mapButton(inputs.inMenu.hold, VPAD_BUTTON_X);
     buttonHold |= mapButton(inputs.inMenu.leftTrigger, VPAD_BUTTON_L);
     buttonHold |= mapButton(inputs.inMenu.rightTrigger, VPAD_BUTTON_R);
+
+    // handle optional quick rune menu
+    if (gameState.rune_menu_open) {
+        if (inputs.inMenu.sort.currentState)
+            buttonHold |= VPAD_BUTTON_UP;
+        else
+            gameState.rune_menu_open = false;
+    }
+    else
+        buttonHold |= mapButton(inputs.inMenu.sort, VPAD_BUTTON_Y);
+
 }
 
 void CemuHooks::hook_InjectXRInput(PPCInterpreter_t* hCPU) {
@@ -566,9 +595,14 @@ void CemuHooks::hook_InjectXRInput(PPCInterpreter_t* hCPU) {
 
         newXRBtnHold |= mapXRButtonToVpad(inputs.inGame.crouch, VPAD_BUTTON_STICK_L);
         
-        // Optional use rune (for seated players)
-        if (inputs.inGame.useRune_dpadMenuState.lastEvent == ButtonState::Event::ShortPress) {
+        // Optional rune inputs (for seated players)
+        if (inputs.inGame.useRune_runeMenuState.lastEvent == ButtonState::Event::LongPress) {
+            gameState.rune_menu_open = true;
+            newXRBtnHold |= VPAD_BUTTON_UP;  // Rune quick menu
+        }
+        if (inputs.inGame.useRune_runeMenuState.lastEvent == ButtonState::Event::ShortPress) {
             newXRBtnHold |= VPAD_BUTTON_L;  // Use rune
+            gameState.last_item_held = EquipType::Rune;
         }
         
         if (inputs.inGame.runState.lastEvent == ButtonState::Event::LongPress) {
@@ -700,6 +734,7 @@ void CemuHooks::hook_InjectXRInput(PPCInterpreter_t* hCPU) {
     hCPU->gpr[3] = 1;
 
     // (re)set values for next frame
+    gameState.previousButtonHold = newXRBtnHold;
     gameState.was_in_game = gameState.in_game;
     gameState.has_something_in_hand = false; // updated in hook_ChangeWeaponMtx
     gameState.is_throwable_object_held = false; // updated in hook_ChangeWeaponMtx
