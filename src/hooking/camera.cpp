@@ -76,6 +76,14 @@ void CemuHooks::hook_UpdateCameraForGameplay(PPCInterpreter_t* hCPU) {
         PlayerMoveBitFlags moveBits = actor.moveBitFlags.getLE();
         s_isSwimming = (std::to_underlying(moveBits) & std::to_underlying(PlayerMoveBitFlags::SWIMMING_1024)) != 0;
 
+        // Todo: move those and their hooks in controls.cpp ?
+        auto gameState = VRManager::instance().XR->m_gameState.load();
+        // Unreliable flag, need to investigate
+        //gameState.is_climbing_wall = (std::to_underlying(moveBits) & std::to_underlying(PlayerMoveBitFlags::IS_WALL_CLIMBING_MAYBE_128)) != 0;
+        gameState.is_climbing_ladder = s_isLadderClimbing == 2 ? true : false;
+        gameState.is_riding_horse = s_isRiding == 2 ? true : false;
+        VRManager::instance().XR->m_gameState.store(gameState);
+
         // read player MTX
         BEMatrix34& mtx = actor.mtx;
         glm::fvec3 playerPos = actor.mtx.getPos().getLE();
@@ -654,14 +662,6 @@ void CemuHooks::hook_PlayerIsRiding(PPCInterpreter_t* hCPU) {
     if (isRiding && IsFirstPerson()) {
         s_isRiding = 2;
     }
-
-
-    // not tested yet
-    auto gameState = VRManager::instance().XR->m_gameState.load();
-    gameState.is_riding_horse = hCPU->gpr[3] == 1 ? true : false;
-    // todo: remove this once hooked up to input system. Also, move to a better function, maybe controls.cpp?
-    //Log::print<VERBOSE>("Player is riding hook called: {}", gameState.is_riding_horse);
-    VRManager::instance().XR->m_gameState.store(gameState);
 }
 
 void CemuHooks::hook_PlayerLadderFix(PPCInterpreter_t* hCPU) {

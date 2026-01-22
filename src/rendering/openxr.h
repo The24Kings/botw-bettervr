@@ -120,6 +120,7 @@ public:
     struct GameState {
         bool left_equip_type_set_this_frame = false;
         bool right_equip_type_set_this_frame = false;
+
         uint32_t previous_button_hold;
         bool in_game = false;
         bool was_in_game = false;
@@ -127,6 +128,7 @@ public:
         bool dpad_menu_open = false;
         bool rune_menu_open = false;
         Direction last_dpad_menu_open = Direction::None;
+
         bool prevent_inputs = false;
         std::chrono::steady_clock::time_point prevent_inputs_time;
         bool prevent_grab_inputs = false;
@@ -147,10 +149,14 @@ public:
         EquipType last_item_held = EquipType::None;
         bool has_something_in_hand = false; // true if either a weapon or a throwable object is held
         bool is_throwable_object_held = false; // true if a throwable object is held
-        float left_hand_velocity = 0.0f;
+
         bool is_locking_on_target = false;
         bool is_shield_guarding = false;
         bool is_riding_horse = false;
+        bool is_climbing_wall = false;
+        bool is_climbing_ladder = false;
+
+        float left_hand_velocity = 0.0f;
         glm::fvec3 stored_left_hand_position = glm::fvec3(0.0f, 0.0f, 0.0f);
         bool left_hand_position_stored = false;
         glm::fvec3 stored_right_hand_position = glm::fvec3(0.0f, 0.0f, 0.0f);

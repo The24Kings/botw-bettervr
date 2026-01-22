@@ -755,7 +755,7 @@ void CemuHooks::hook_InjectXRInput(PPCInterpreter_t* hCPU) {
         }
     }
 
-    // Process input
+    // Process inputs
     if (gameState.in_game) {
         if (!gameState.prevent_inputs) {
             // prevent jump when exiting menus with B button
@@ -789,11 +789,19 @@ void CemuHooks::hook_InjectXRInput(PPCInterpreter_t* hCPU) {
             gameState.last_item_held = EquipType::SheikahSlate;
         }
         
+        // If climbing or paragliding, make the B button cancel instantly the action instead of long press to run
+        // Waiting for more reliable flags before enabling this
+        //if (gameState.is_climbing_ladder || gameState.is_climbing_wall /* || gameState.isParagliding*/)
+        //{
+        //    newXRBtnHold |= mapXRButtonToVpad(inputs.inGame.run_interact_cancel, VPAD_BUTTON_B);
+        //}
+        //else {
         if (inputs.inGame.runState.lastEvent == ButtonState::Event::LongPress) {
             newXRBtnHold |= VPAD_BUTTON_B;  // Run
         }
         else
             newXRBtnHold |= mapXRButtonToVpad(inputs.inGame.run_interact_cancel, VPAD_BUTTON_A);
+        //}
         
         // Wistle gesture
         if (isHandOverMouthSlot(leftGesture) && isHandOverMouthSlot(rightGesture)) {
