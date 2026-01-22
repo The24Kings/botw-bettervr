@@ -299,6 +299,9 @@ void handleLeftHandInGameInput(
     if (isCurrentGrabPressed) {
         // Magnesis motion controls
         if (gameState.right_equip_type == EquipType::MagnetGlove) {
+            // null right joystick Y to let the magnesis motion controls handle it.
+            rightStickSource.currentState.y = 0.0f;
+
             if (!gameState.left_hand_position_stored) {
                 gameState.stored_left_hand_position = ToGLM(inputs.inGame.poseLocation[0].pose.position);
                 gameState.left_hand_position_stored = true;
@@ -468,6 +471,9 @@ void handleRightHandInGameInput(
     if (isCurrentGrabPressed) {
         // Magnesis motion controls
         if (gameState.right_equip_type == EquipType::MagnetGlove) {
+            // null right joystick Y to let the magnesis motion controls handle it.
+            rightStickSource.currentState.y = 0.0f;
+
             if (!gameState.right_hand_position_stored) {
                 gameState.stored_right_hand_position = ToGLM(inputs.inGame.poseLocation[1].pose.position);
                 gameState.right_hand_position_stored = true;
@@ -751,9 +757,6 @@ void CemuHooks::hook_InjectXRInput(PPCInterpreter_t* hCPU) {
 
     // Process input
     if (gameState.in_game) {
-        // null right joystick Y to let the magnesis motion controls handle it.
-        rightStickSource.currentState.y = 0.0f;
-
         if (!gameState.prevent_inputs) {
             // prevent jump when exiting menus with B button
             newXRBtnHold |= mapXRButtonToVpad(inputs.inGame.jump, VPAD_BUTTON_X);
