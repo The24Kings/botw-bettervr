@@ -83,7 +83,7 @@ void CemuHooks::hook_UpdateCameraForGameplay(PPCInterpreter_t* hCPU) {
         gameState.is_climbing = ((std::to_underlying(moveBits) & std::to_underlying(PlayerMoveBitFlags::IS_SWIMMING_OR_CLIMBING)) != 0) && 
             ((std::to_underlying(moveBits) & std::to_underlying(PlayerMoveBitFlags::IS_CLIMBING_WALL)) != 0) ||
             s_isLadderClimbing == 2;
-        gameState.is_riding_horse = s_isRiding == 2 ? true : false;
+        gameState.is_riding_mount = s_isRiding == 2 ? true : false;
         gameState.is_paragliding = (std::to_underlying(moveBits) & std::to_underlying(PlayerMoveBitFlags::IS_GLIDER_ACTIVE)) != 0;
         VRManager::instance().XR->m_gameState.store(gameState);
 

@@ -152,7 +152,7 @@ public:
 
         bool is_locking_on_target = false;
         bool is_shield_guarding = false;
-        bool is_riding_horse = false;
+        bool is_riding_mount = false;
         bool is_climbing = false;
         bool is_paragliding = false;
 

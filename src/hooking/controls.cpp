@@ -793,6 +793,11 @@ void CemuHooks::hook_InjectXRInput(PPCInterpreter_t* hCPU) {
         if (gameState.is_climbing || gameState.is_paragliding) {
             newXRBtnHold |= mapXRButtonToVpad(inputs.inGame.run_interact_cancel, VPAD_BUTTON_B);
         }
+        else if (gameState.is_riding_mount)
+        {
+            newXRBtnHold |= mapXRButtonToVpad(inputs.inGame.run_interact_cancel, VPAD_BUTTON_A);
+            newXRBtnHold |= mapXRButtonToVpad(inputs.inGame.useLeftItem, VPAD_BUTTON_B);
+        }
         else {
             if (inputs.inGame.runState.lastEvent == ButtonState::Event::LongPress) {
                 newXRBtnHold |= VPAD_BUTTON_B; // Run
