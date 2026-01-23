@@ -193,7 +193,7 @@ void CemuHooks::hook_GetRenderCamera(PPCInterpreter_t* hCPU) {
             playerPos.y -= hardcodedRidingOffset;
         }
         else if (s_isSwimming) {
-            playerPos.y += hardcodedSwimOffset;
+            playerPos.y += hardcodedSwimOffset + GetSettings().playerHeightSetting.getLE();
         }
         else {
             playerPos.y += GetSettings().playerHeightSetting.getLE();
