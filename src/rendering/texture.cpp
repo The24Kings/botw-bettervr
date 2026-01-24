@@ -140,6 +140,76 @@ void BaseVulkanTexture::vkCopyFromImage(VkCommandBuffer cmdBuffer, VkImage srcIm
     VulkanUtils::DebugPipelineBarrier(cmdBuffer);
 }
 
+void BaseVulkanTexture::vkUpload(VkCommandBuffer cmdBuffer, const void* data, size_t size) {
+    m_uploadCommandBuffer = cmdBuffer;
+    isStagingUpload = true;
+
+    auto* dispatch = VRManager::instance().VK->GetDeviceDispatch();
+    VkDevice device = VRManager::instance().VK->GetDevice();
+
+    VkBufferCreateInfo bufferInfo = { VK_STRUCTURE_TYPE_BUFFER_CREATE_INFO };
+    bufferInfo.size = size;
+    bufferInfo.usage = VK_BUFFER_USAGE_TRANSFER_SRC_BIT;
+    bufferInfo.sharingMode = VK_SHARING_MODE_EXCLUSIVE;
+    bufferInfo.queueFamilyIndexCount = 0;
+    bufferInfo.pQueueFamilyIndices = nullptr;
+
+    checkVkResult(dispatch->CreateBuffer(device, &bufferInfo, nullptr, &m_stagingBuffer), "Failed to create staging buffer!");
+
+    VkMemoryRequirements memRequirements;
+    dispatch->GetBufferMemoryRequirements(device, m_stagingBuffer, &memRequirements);
+
+    VkMemoryAllocateInfo allocInfo = { VK_STRUCTURE_TYPE_MEMORY_ALLOCATE_INFO };
+    allocInfo.allocationSize = memRequirements.size;
+    allocInfo.memoryTypeIndex = VRManager::instance().VK->FindMemoryType(memRequirements.memoryTypeBits, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT | VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+    checkVkResult(dispatch->AllocateMemory(device, &allocInfo, nullptr, &m_stagingMemory), "Failed to allocate staging buffer memory!");
+
+    checkVkResult(dispatch->BindBufferMemory(device, m_stagingBuffer, m_stagingMemory, 0), "Failed to bind staging buffer memory!");
+
+    void* mappedData;
+    checkVkResult(dispatch->MapMemory(device, m_stagingMemory, 0, size, 0, &mappedData), "Failed to map staging buffer memory!");
+    memcpy(mappedData, data, size);
+    dispatch->UnmapMemory(device, m_stagingMemory);
+
+    VkBufferImageCopy region = {};
+    region.bufferOffset = 0;
+    region.bufferRowLength = 0;
+    region.bufferImageHeight = 0;
+    region.imageSubresource.aspectMask = GetAspectMask();
+    region.imageSubresource.mipLevel = 0;
+    region.imageSubresource.baseArrayLayer = 0;
+    region.imageSubresource.layerCount = 1;
+    region.imageOffset = { .x = 0, .y = 0, .z = 0 };
+    region.imageExtent = {
+        .width = m_width,
+        .height = m_height,
+        .depth = 1
+    };
+
+    VulkanUtils::DebugPipelineBarrier(cmdBuffer);
+    dispatch->CmdCopyBufferToImage(cmdBuffer, m_stagingBuffer, m_vkImage, VK_IMAGE_LAYOUT_GENERAL, 1, &region);
+    VulkanUtils::DebugPipelineBarrier(cmdBuffer);
+}
+
+// this relies on Cemu always only having one command buffer in flight
+void BaseVulkanTexture::vkTryToFinishAnyUploads(VkCommandBuffer cmdBuffer) {
+    if (isStagingUpload && m_uploadCommandBuffer != cmdBuffer) {
+        isStagingUpload = false;
+        m_uploadCommandBuffer = VK_NULL_HANDLE;
+
+        auto* dispatch = VRManager::instance().VK->GetDeviceDispatch();
+        VkDevice device = VRManager::instance().VK->GetDevice();
+        if (m_stagingBuffer != VK_NULL_HANDLE) {
+            dispatch->DestroyBuffer(device, m_stagingBuffer, nullptr);
+            m_stagingBuffer = VK_NULL_HANDLE;
+        }
+        if (m_stagingMemory != VK_NULL_HANDLE) {
+            dispatch->FreeMemory(device, m_stagingMemory, nullptr);
+            m_stagingMemory = VK_NULL_HANDLE;
+        }
+    }
+}
+
 VulkanTexture::VulkanTexture(uint32_t width, uint32_t height, VkFormat format, VkImageUsageFlags usage, bool disableAlphaThroughSwizzling): BaseVulkanTexture(width, height, format) {
     const auto* dispatch = VRManager::instance().VK->GetDeviceDispatch();
 

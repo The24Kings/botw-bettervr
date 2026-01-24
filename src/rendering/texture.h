@@ -18,10 +18,16 @@ public:
     // AMD GPU FIX: srcLayout parameter to specify the actual source image layout
     // If srcLayout is TRANSFER_SRC_OPTIMAL, assume caller has already transitioned and skip internal transitions
     void vkCopyFromImage(VkCommandBuffer cmdBuffer, VkImage srcImage);
+
+    bool vkIsUploadingTexture() const { return isStagingUpload; }
+    void vkUpload(VkCommandBuffer cmdBuffer, const void* data, size_t size);
+    void vkTryToFinishAnyUploads(VkCommandBuffer cmdBuffer);
+
     uint32_t GetWidth() const { return m_width; }
     uint32_t GetHeight() const { return m_height; }
     VkFormat GetFormat() const { return m_vkFormat; }
     VkImageAspectFlags GetAspectMask() const;
+    VkImage GetImage() const { return m_vkImage; }
 
 protected:
     VkImage m_vkImage = VK_NULL_HANDLE;
@@ -30,6 +36,12 @@ protected:
     uint32_t m_width;
     uint32_t m_height;
     VkFormat m_vkFormat;
+
+    // for tracking uploads and freeing staging buffers
+    bool isStagingUpload = false;
+    VkCommandBuffer m_uploadCommandBuffer;
+    VkBuffer m_stagingBuffer;
+    VkDeviceMemory m_stagingMemory;
 };
 
 class VulkanTexture : public BaseVulkanTexture {
