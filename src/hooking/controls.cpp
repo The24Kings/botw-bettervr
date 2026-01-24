@@ -203,9 +203,9 @@ void handleLeftHandInGameInput(
 ) {
     constexpr std::chrono::milliseconds INPUT_DELAY(400);
     
-    static const RumbleParameters leftRumbleRaise = { true, 0, RumbleType::Raising, 0.5f, false, 0.2, 1.0f, 1.0f };
-    static const RumbleParameters leftRumbleFall = { true, 0, RumbleType::Falling, 0.5f, false, 0.3, 0.1f, 0.75f };
-    static const RumbleParameters RuneRumble = { true, 0, RumbleType::OscillationSmooth, 1.0f, false, 1.0, 0.25f, 0.25f };
+    constexpr RumbleParameters leftRumbleRaise = { true, 0, RumbleType::Raising, 0.5f, false, 0.2, 1.0f, 1.0f };
+    constexpr RumbleParameters leftRumbleFall = { true, 0, RumbleType::Falling, 0.5f, false, 0.3, 0.1f, 0.75f };
+    constexpr RumbleParameters RuneRumble = { true, 0, RumbleType::OscillationSmooth, 1.0f, false, 1.0, 0.25f, 0.25f };
     
     auto* rumbleMgr = VRManager::instance().XR->GetRumbleManager();
     bool isGrabPressed = inputs.inGame.grabState[0].lastEvent == ButtonState::Event::ShortPress;
@@ -374,8 +374,8 @@ void handleRightHandInGameInput(
 ) {
     constexpr std::chrono::milliseconds INPUT_DELAY(400);
     
-    static const RumbleParameters rightRumbleFall = { true, 1, RumbleType::Falling, 0.5f, false, 0.3, 0.1f, 0.75f };
-    static const RumbleParameters rightRumbleInfiniteRaise = { true, 1, RumbleType::Raising, 0.5f, true, 1.0, 0.25f, 0.25f };
+    constexpr RumbleParameters rightRumbleFall = { true, 1, RumbleType::Falling, 0.5f, false, 0.3, 0.1f, 0.75f };
+    constexpr RumbleParameters rightRumbleInfiniteRaise = { true, 1, RumbleType::Raising, 0.5f, true, 1.0, 0.25f, 0.25f };
 
     auto* rumbleMgr = VRManager::instance().XR->GetRumbleManager();
     bool isGrabPressedShort = inputs.inGame.grabState[1].lastEvent == ButtonState::Event::ShortPress;
@@ -535,12 +535,12 @@ void handleLeftTriggerBindings(
         return;
     }
 
-    static const RumbleParameters raiseRumble = { true, 0, RumbleType::Raising, 0.5f, false, 0.25, 0.3f, 0.3f };
-    static const RumbleParameters fallRumble = { true, 0, RumbleType::Falling, 0.5f, false, 0.25, 0.3f, 0.3f };
+    constexpr RumbleParameters raiseRumble = { true, 0, RumbleType::Raising, 0.5f, false, 0.25, 0.3f, 0.3f };
+    constexpr RumbleParameters fallRumble = { true, 0, RumbleType::Falling, 0.5f, false, 0.25, 0.3f, 0.3f };
 
     auto* rumbleMgr = VRManager::instance().XR->GetRumbleManager();
 
-    //Guard + lock on
+    // Guard + lock on
     // Reset the guard state to trigger again the lock on camera
     if (!gameState.is_locking_on_target && gameState.previous_button_hold & VPAD_BUTTON_ZL) {
         // cancel rune use to let the shield guard happen
@@ -576,11 +576,11 @@ void handleRightTriggerBindings(
         return;
     }
     
-    const static RumbleParameters rightRumbleFixed = { true, 1, RumbleType::Fixed, 0.5f, false, 0.25, 0.3f, 0.3f };
-    const static RumbleParameters leftRumbleFixed = { true, 0, RumbleType::Fixed, 0.5f, false, 0.25, 0.3f, 0.3f };
-    static const RumbleParameters rightRumbleInfiniteRaiseBow = { true, 1, RumbleType::Raising, 0.5f, true, 1.0, 0.25f, 0.25f };
-    static const RumbleParameters rightRumbleInfiniteRaiseWeaponThrow = { true, 1, RumbleType::Raising, 0.5f, true, 1.0, 0.25f, 0.25f };
-    static const RumbleParameters rightRumbleFiniteRaise = { true, 1, RumbleType::Raising, 0.5f, false, 0.25, 1.0f, 1.0f };
+    constexpr RumbleParameters rightRumbleFixed = { true, 1, RumbleType::Fixed, 0.5f, false, 0.25, 0.3f, 0.3f };
+    constexpr RumbleParameters leftRumbleFixed = { true, 0, RumbleType::Fixed, 0.5f, false, 0.25, 0.3f, 0.3f };
+    constexpr RumbleParameters rightRumbleInfiniteRaiseBow = { true, 1, RumbleType::Raising, 0.5f, true, 1.0, 0.25f, 0.25f };
+    constexpr RumbleParameters rightRumbleInfiniteRaiseWeaponThrow = { true, 1, RumbleType::Raising, 0.5f, true, 1.0, 0.25f, 0.25f };
+    constexpr RumbleParameters rightRumbleFiniteRaise = { true, 1, RumbleType::Raising, 0.5f, false, 0.25, 1.0f, 1.0f };
     
     
     if (gameState.has_something_in_hand) {
@@ -673,6 +673,8 @@ void CemuHooks::hook_InjectXRInput(PPCInterpreter_t* hCPU) {
         readMemory(vpadStatusOffset, &vpadStatus);
     }
 
+    auto* rumbleMgr = VRManager::instance().XR->GetRumbleManager();
+
     // fetch input state
     OpenXR::InputState inputs = VRManager::instance().XR->m_input.load();
     inputs.inGame.drop_weapon[0] = inputs.inGame.drop_weapon[1] = false;
@@ -736,7 +738,7 @@ void CemuHooks::hook_InjectXRInput(PPCInterpreter_t* hCPU) {
         rightGesture = calculateHandGesture(gameState, rightHandPos, headsetMtx, headsetPos, gameState.right_hand_position_stored, gameState.stored_right_hand_position);
     }
     
-    //dpad menu toggle
+    // dpad menu toggle
     if (gameState.dpad_menu_open)
     {
         switch (gameState.last_dpad_menu_open) {
@@ -805,11 +807,11 @@ void CemuHooks::hook_InjectXRInput(PPCInterpreter_t* hCPU) {
             else
                 newXRBtnHold |= mapXRButtonToVpad(inputs.inGame.run_interact_cancel, VPAD_BUTTON_A);
         }
-        
-        // Wistle gesture
+
+        // Whistle gesture
         if (isHandOverMouthSlot(leftGesture) && isHandOverMouthSlot(rightGesture)) {
             if (inputs.inGame.grabState[0].wasDownLastFrame && inputs.inGame.grabState[1].wasDownLastFrame) {
-                static const RumbleParameters rumble = { true, 0, RumbleType::OscillationRaisingSawtoothWave, 1.0f, false, 0.25, 0.2f, 0.2f };
+                rumbleMgr->enqueueInputsRumbleCommand({ true, 0, RumbleType::OscillationRaisingSawtoothWave, 1.0f, false, 0.25, 0.2f, 0.2f });
                 VRManager::instance().XR->GetRumbleManager()->enqueueInputsRumbleCommand(rumble);
                 newXRBtnHold |= VPAD_BUTTON_DOWN;
             }
@@ -829,7 +831,7 @@ void CemuHooks::hook_InjectXRInput(PPCInterpreter_t* hCPU) {
         //if (inputs.inGame.leftTrigger.currentState && 
         //    gameState.left_equip_type == EquipType::Rune) {
         //    RumbleParameters rumble = { true, 1, 0.5f, false, 0.25, 0.3f, 0.3f };
-        //    VRManager::instance().XR->GetRumbleManager()->enqueueInputsRumbleCommand(rumble);
+        //    rumbleMgr->enqueueInputsRumbleCommand(rumble);
         //    newXRBtnHold |= VPAD_BUTTON_B;
         //}
     }
@@ -838,7 +840,7 @@ void CemuHooks::hook_InjectXRInput(PPCInterpreter_t* hCPU) {
     }
     
     // Update rumble/haptics
-    VRManager::instance().XR->GetRumbleManager()->updateHaptics();
+    rumbleMgr->updateHaptics();
 
 
 

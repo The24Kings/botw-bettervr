@@ -413,7 +413,7 @@ enum WeaponType : uint32_t {
     UnknownWeapon = 0x5,
 };
 
- enum class EquipType {
+enum class EquipType {
     None = 0,
     Melee = 1,
     Shield = 2,
@@ -424,14 +424,14 @@ enum WeaponType : uint32_t {
     ThrowableObject = 7
 };
 
- enum class RumbleType {
-     Fixed,
-     Raising,
-     Falling,
-     OscillationSmooth,
-     OscillationFallingSawtoothWave,
-     OscillationRaisingSawtoothWave
- };
+enum class RumbleType {
+    Fixed,
+    Raising,
+    Falling,
+    OscillationSmooth,
+    OscillationFallingSawtoothWave,
+    OscillationRaisingSawtoothWave
+};
 
  struct RumbleParameters {
      bool prioritizeThisRumble = false;
@@ -444,7 +444,7 @@ enum WeaponType : uint32_t {
      float amplitude = 0.0f;
  };
 
- enum class Direction {
+enum class Direction {
     Up,
     Right,
     Down,

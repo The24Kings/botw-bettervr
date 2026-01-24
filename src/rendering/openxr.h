@@ -25,6 +25,30 @@ public:
     } m_capabilities = {};
 
     union InputState {
+        struct ButtonState {
+            enum class Event {
+                None,
+                ShortPress,
+                LongPress,
+                //DoublePress
+            };
+
+            bool wasDownLastFrame = false;
+            bool longFired = false;
+            bool waitingForSecond = false;
+            std::chrono::steady_clock::time_point pressStartTime;
+            std::chrono::steady_clock::time_point lastReleaseTime;
+
+            Event lastEvent = Event::None;
+
+            void resetFrameFlags() { lastEvent = Event::None; }
+            void resetButtonState() {
+                wasDownLastFrame = false;
+                longFired = false;
+                waitingForSecond = false;
+            }
+        };
+
         struct InGame {
             bool in_game = true;
             XrTime inputTime;
@@ -54,30 +78,6 @@ public:
             XrActionStateBoolean useRightItem;
 
             std::array<bool, 2> drop_weapon; // LEFT/RIGHT
-
-            struct ButtonState {
-                enum class Event {
-                    None,
-                    ShortPress,
-                    LongPress,
-                    //DoublePress
-                };
-
-                bool wasDownLastFrame = false;
-                bool longFired = false;
-                bool waitingForSecond = false;
-                std::chrono::steady_clock::time_point pressStartTime;
-                std::chrono::steady_clock::time_point lastReleaseTime;
-
-                Event lastEvent = Event::None;
-
-                void resetFrameFlags() { lastEvent = Event::None; }
-                void resetButtonState() {
-                    wasDownLastFrame = false;
-                    longFired = false;
-                    waitingForSecond = false;
-                }
-            };
 
             std::array<ButtonState, 2> grabState; // LEFT/RIGHT
             ButtonState runState;
@@ -258,7 +258,7 @@ private:
     PFN_xrCreateDebugUtilsMessengerEXT func_xrCreateDebugUtilsMessengerEXT = nullptr;
     PFN_xrDestroyDebugUtilsMessengerEXT func_xrDestroyDebugUtilsMessengerEXT = nullptr;
 };
-using ButtonState = OpenXR::InputState::InGame::ButtonState;
+using ButtonState = OpenXR::InputState::ButtonState;
 using EyeSide = OpenXR::EyeSide;
 
 template <>
