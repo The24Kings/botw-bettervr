@@ -121,6 +121,12 @@ static bool isDroppable(std::string actorName) {
     return true;
 }
 
+constexpr uint32_t FLAG_THROWABLE = 0x00004000;
+bool ObjectCanBeThrown(uint32_t flags)
+{
+    return (flags & FLAG_THROWABLE);
+}
+
 void CemuHooks::hook_ChangeWeaponMtx(PPCInterpreter_t* hCPU) {
     hCPU->instructionPointer = hCPU->sprNew.LR;
 
@@ -168,6 +174,9 @@ void CemuHooks::hook_ChangeWeaponMtx(PPCInterpreter_t* hCPU) {
     bool isHeldByPlayer = actorName.getLE() == "GameROMPlayer";
     bool isLeftHandWeapon = strcmp(boneName, "Weapon_L") == 0;
     bool isRightHandWeapon = strcmp(boneName, "Weapon_R") == 0;
+
+    //Log::print<INFO>("boneName : {}", boneName);
+
     if (!actorName.getLE().empty() && boneName[0] != '\0' && isHeldByPlayer && (isLeftHandWeapon || isRightHandWeapon)) {
         OpenXR::EyeSide side = isLeftHandWeapon ? OpenXR::EyeSide::LEFT : OpenXR::EyeSide::RIGHT;
 
@@ -201,7 +210,52 @@ void CemuHooks::hook_ChangeWeaponMtx(PPCInterpreter_t* hCPU) {
         Weapon targetActor = {};
         readMemory(targetActorPtr, &targetActor);
 
-        // check if weapon is held and if the grip button is held, drop it
+        //Fetch data for inputs handling
+        auto gameState = VRManager::instance().XR->m_gameState.load();
+        gameState.has_something_in_hand = true;
+        gameState.is_throwable_object_held = ObjectCanBeThrown(targetActor.flags2.getLE());
+        auto equipType = EquipType::None;
+        switch (targetActor.type.getLE()) {
+            case WeaponType::SmallSword:
+            case WeaponType::LargeSword:
+            case WeaponType::Spear:
+                equipType = EquipType::Melee;
+                break;
+            case WeaponType::Bow:
+                equipType = EquipType::Bow;
+                break;
+            case WeaponType::Shield:
+                equipType = EquipType::Shield;
+                break;
+            default:
+                equipType = EquipType::None;
+                break;
+        }
+
+       
+        //Log::print<INFO>("Equipped weapon {} with type of {} on side {}", targetActor.name.getLE().c_str(), (uint32_t)targetActor.type.getLE(), (uint32_t)side);
+
+        if (isRightHandWeapon) {
+            if (targetActor.name.getLE() == "Item_Magnetglove")
+            equipType = EquipType::MagnetGlove;
+
+            gameState.right_equip_type = equipType;
+            if (gameState.left_equip_type == EquipType::Bow)
+                gameState.right_equip_type = EquipType::Arrow;
+            gameState.right_equip_type_set_this_frame = true;
+        }
+        else {
+            if (targetActor.name.getLE() == "Item_Conductor")
+            equipType = EquipType::SheikahSlate;
+
+            gameState.left_equip_type = equipType;
+            gameState.left_equip_type_set_this_frame = true;
+        }
+        VRManager::instance().XR->m_gameState.store(gameState);
+
+        
+
+        // check if weapon is held and if a drop should be triggered
         auto input = VRManager::instance().XR->m_input.load();
         auto dropSide = input.inGame.drop_weapon[side];
 
@@ -376,7 +430,19 @@ void CemuHooks::hook_EnableWeaponAttackSensor(PPCInterpreter_t* hCPU) {
         if (rumbleVelocity <= 0.0f) {
             rumbleVelocity = 0.0f;
         }
-        VRManager::instance().XR->GetRumbleManager()->startSimpleRumble(!heldIndex, 0.1f, 0.5f * rumbleVelocity, 0.7f * rumbleVelocity);
+
+        static const RumbleParameters rumbleParams = {
+            false,
+            1,
+            RumbleType::Fixed,
+            0.0f,
+            false,
+            0.001,
+            0.5f * rumbleVelocity,
+            0.7f * rumbleVelocity
+        };
+         
+        VRManager::instance().XR->GetRumbleManager()->enqueueInputsRumbleCommand(rumbleParams);
     }
 }
 

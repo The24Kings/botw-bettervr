@@ -27,7 +27,7 @@ public:
         osLib_registerHLEFunction("coreinit", "hook_UpdateActorList", &hook_UpdateActorList);
         osLib_registerHLEFunction("coreinit", "hook_CreateNewActor", &hook_CreateNewActor);
 
-        // Camera Hooks
+        // Stereo Rendering/Camera Hooks
         osLib_registerHLEFunction("coreinit", "hook_BeginCameraSide", &hook_BeginCameraSide);
         osLib_registerHLEFunction("coreinit", "hook_ModifyLightPrePassProjectionMatrix", &hook_ModifyLightPrePassProjectionMatrix);
         osLib_registerHLEFunction("coreinit", "hook_OverwriteSeadPerspectiveProjectionSet", &hook_OverwriteSeadPerspectiveProjectionSet);

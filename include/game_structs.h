@@ -256,28 +256,32 @@ static_assert(sizeof(PlayerOrEnemy) == 0x838, "PlayerOrEnemy size mismatch");
 // 0x00008002 for gliding
 // 0x00000090 for climbing
 // 0x00000410 for swimming (00001000001000000000000000000000)
+
+// Observed to be related to animations overrides.
+// Some player actions are represented by combinaisons of these flags.
+// No flags are set when in an event (interaction with npc, merchants, talks etc)
 enum class PlayerMoveBitFlags : uint32_t {
     IS_MOVING = 1 << 0,
-    IN_AIR_MAYBE_02 = 1 << 1,
-    UNK_004 = 1 << 2,
+    IS_IN_AIR = 1 << 1,
+    IS_CROUCHING = 1 << 2,
     UNK_008 = 1 << 3,
-    IS_LADDER_016 = 1 << 4,
-    UNK_032 = 1 << 5,
+    IS_SWIMMING_OR_CLIMBING = 1 << 4, // This used alone = climbing ladder. 
+    IS_PICKING_DROPPING_THROWING_OBJECT = 1 << 5,
     UNK_064 = 1 << 6,
-    IS_WALL_CLIMBING_MAYBE_128 = 1 << 7, // set while climbing?
+    IS_CLIMBING_WALL = 1 << 7, // This + IS_SWIMMING_OR_CLIMBING = IS_CLIMBING_WALL 
     UNK_256 = 1 << 8,
     UNK_512 = 1 << 9,
-    SWIMMING_1024 = 1 << 10,
-    UNK_2048 = 1 << 11,
+    IS_SWIMMING = 1 << 10, // This + IS_SWIMMING_OR_CLIMBING = IS_SWIMMING
+    IS_SWIMMING_DASH = 1 << 11, // This + IS_SWIMMING_OR_CLIMBING + IS_SWIMMING = IS_SWIMMING_DASH
     UNK_4096 = 1 << 12,
     UNK_8192 = 1 << 13,
     UNK_16384 = 1 << 14,
-    UNK_32768 = 1 << 15,
+    IS_GLIDER_ACTIVE = 1 << 15,
     UNK_65536 = 1 << 16,
     UNK_131072 = 1 << 17,
     UNK_262144 = 1 << 18,
-    UNK_524288 = 1 << 19,
-    UNK_1048576 = 1 << 20,
+    IS_RAGDOLL_ACTIVE = 1 << 19,
+    IS_RIDING_HORSE = 1 << 20,
     UNK_2097152 = 1 << 21,
     UNK_4194304 = 1 << 22,
     UNK_8388608 = 1 << 23,
@@ -407,6 +411,45 @@ enum WeaponType : uint32_t {
     Bow = 0x3,
     Shield = 0x4,
     UnknownWeapon = 0x5,
+};
+
+ enum class EquipType {
+    None = 0,
+    Melee = 1,
+    Shield = 2,
+    Bow = 3,
+    Arrow = 4,
+    SheikahSlate = 5,
+    MagnetGlove = 6,
+    ThrowableObject = 7
+};
+
+ enum class RumbleType {
+     Fixed,
+     Raising,
+     Falling,
+     OscillationSmooth,
+     OscillationFallingSawtoothWave,
+     OscillationRaisingSawtoothWave
+ };
+
+ struct RumbleParameters {
+     bool prioritizeThisRumble = false;
+     int hand = 0;
+     RumbleType rumbleType = RumbleType::Fixed;
+     float oscillationFrequency = 0.0f;
+     bool keepRumblingOnEffectEnd = false; // requires stopInputsRumble() to manually stop the rumble
+     double effectDuration = 0;
+     float frequency = 0.0f;
+     float amplitude = 0.0f;
+ };
+
+ enum class Direction {
+    Up,
+    Right,
+    Down,
+    Left,
+    None
 };
 
 struct Weapon : WeaponBase {

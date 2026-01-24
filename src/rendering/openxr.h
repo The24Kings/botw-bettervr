@@ -35,23 +35,24 @@ public:
             std::array<XrSpaceVelocity, 2> poseVelocity;
             std::array<XrSpaceLocation, 2> hmdRelativePoseLocation;
 
-            XrActionStateBoolean mapAndInventory;
-            XrActionStateBoolean leftTrigger;
-            XrActionStateBoolean rightTrigger;
+            // shared
+            XrActionStateBoolean map_scope;
+            XrActionStateBoolean inventory;
 
             // unique
-            XrActionStateVector2f camera;
             XrActionStateVector2f move;
-
-            XrActionStateBoolean jump;
+            XrActionStateVector2f camera;
             XrActionStateBoolean crouch;
-            XrActionStateBoolean run;
-            XrActionStateBoolean attack;
-            XrActionStateBoolean useRune;
-            XrActionStateBoolean throwWeapon;
-            XrActionStateBoolean cancel;
-            XrActionStateBoolean interact;
+            //XrActionStateBoolean scope;
+
             std::array<XrActionStateFloat, 2> grab;
+            XrActionStateBoolean jump;
+            XrActionStateBoolean run_interact_cancel;
+            XrActionStateBoolean useRune_dpadMenu;
+
+            XrActionStateBoolean useLeftItem;
+            XrActionStateBoolean useRightItem;
+
             std::array<bool, 2> drop_weapon; // LEFT/RIGHT
 
             struct ButtonState {
@@ -59,7 +60,7 @@ public:
                     None,
                     ShortPress,
                     LongPress,
-                    DoublePress
+                    //DoublePress
                 };
 
                 bool wasDownLastFrame = false;
@@ -77,9 +78,11 @@ public:
                     waitingForSecond = false;
                 }
             };
+
             std::array<ButtonState, 2> grabState; // LEFT/RIGHT
             ButtonState runState;
-            ButtonState mapAndInventoryState;
+            ButtonState map_scopeState;
+            ButtonState useRune_runeMenuState;
 
         } inGame;
         struct InMenu {
@@ -92,10 +95,6 @@ public:
             std::array<XrSpaceVelocity, 2> poseVelocity;
             std::array<XrSpaceLocation, 2> hmdRelativePoseLocation;
 
-            XrActionStateBoolean mapAndInventory;
-            XrActionStateBoolean leftTrigger;
-            XrActionStateBoolean rightTrigger;
-
             // unique
             XrActionStateVector2f scroll;
             XrActionStateVector2f navigate;
@@ -107,22 +106,74 @@ public:
 
             XrActionStateBoolean leftGrip;
             XrActionStateBoolean rightGrip;
+
+            XrActionStateBoolean leftTrigger;
+            XrActionStateBoolean rightTrigger;
+
+            XrActionStateBoolean map;
+            XrActionStateBoolean inventory;
         } inMenu;
     };
     std::atomic<InputState> m_input = InputState{};
     std::atomic<glm::fquat> m_inputCameraRotation = glm::identity<glm::fquat>();
 
     struct GameState {
+        bool left_equip_type_set_this_frame = false;
+        bool right_equip_type_set_this_frame = false;
+
+        uint32_t previous_button_hold;
         bool in_game = false;
         bool was_in_game = false;
-        bool map_open = false;
-        bool prevent_menu_inputs = false;
-        std::chrono::steady_clock::time_point prevent_menu_time;
+        bool map_open = false; // map = true, inventory = false
+        bool dpad_menu_open = false;
+        bool rune_menu_open = false;
+        Direction last_dpad_menu_open = Direction::None;
+
+        bool prevent_inputs = false;
+        std::chrono::steady_clock::time_point prevent_inputs_time;
         bool prevent_grab_inputs = false;
         std::chrono::steady_clock::time_point prevent_grab_time;
-    } gameState ;
 
+        //Pull gesture
+        bool right_hand_was_over_left_shoulder_slot = false;
+        bool right_hand_was_over_right_shoulder_slot = false;
+        bool right_hand_was_over_left_waist_slot = false;
+        bool left_hand_was_over_left_shoulder_slot = false;
+        bool left_hand_was_over_right_shoulder_slot = false;
+        bool left_hand_was_over_left_waist_slot = false;
+
+        EquipType right_equip_type = EquipType::None;
+        EquipType left_equip_type = EquipType::None;
+        EquipType previous_right_equip_type = EquipType::None;
+        EquipType previous_left_equip_type = EquipType::None;
+        EquipType last_item_held = EquipType::None;
+        bool has_something_in_hand = false; // true if either a weapon or a throwable object is held
+        bool is_throwable_object_held = false; // true if a throwable object is held
+
+        bool is_locking_on_target = false;
+        bool is_shield_guarding = false;
+        bool is_riding_mount = false;
+        bool is_climbing = false;
+        bool is_paragliding = false;
+
+        float left_hand_velocity = 0.0f;
+        glm::fvec3 stored_left_hand_position = glm::fvec3(0.0f, 0.0f, 0.0f);
+        bool left_hand_position_stored = false;
+        glm::fvec3 stored_right_hand_position = glm::fvec3(0.0f, 0.0f, 0.0f);
+        bool right_hand_position_stored = false;
+        int magnesis_forward_frames_interval = 0;
+        bool weapon_throwed = false;
+    } gameState ;
     std::atomic<GameState> m_gameState{};
+
+    // We'll manage the rumble commands priority inside controls.cpp
+    struct RumbleParameters {
+        bool leftHand = false;
+        double duration = 0;
+        float frequency = 0.0f;
+        float amplitude = 0.0f;
+    } rumbleParameters ;
+    std::atomic<RumbleParameters> m_rumbleParameters{};
 
     void CreateSession(const XrGraphicsBindingD3D12KHR& d3d12Binding);
     void CreateActions();
@@ -161,22 +212,20 @@ private:
     XrActionSet m_gameplayActionSet = XR_NULL_HANDLE;
     XrAction m_moveAction = XR_NULL_HANDLE;
     XrAction m_cameraAction = XR_NULL_HANDLE;
-    XrAction m_grabAction = XR_NULL_HANDLE;
-    
-    XrAction m_jumpAction = XR_NULL_HANDLE;
     XrAction m_crouchAction = XR_NULL_HANDLE;
-    XrAction m_runAction = XR_NULL_HANDLE;
-    XrAction m_attackAction = XR_NULL_HANDLE;
-    XrAction m_useRuneAction = XR_NULL_HANDLE;
-    XrAction m_throwWeaponAction = XR_NULL_HANDLE;
+    //XrAction m_scopeAction = XR_NULL_HANDLE;
+    
+    XrAction m_grab_interactAction = XR_NULL_HANDLE;
+    XrAction m_jumpAction = XR_NULL_HANDLE;
+    XrAction m_run_interact_cancelAction = XR_NULL_HANDLE;
+    XrAction m_useRune_dpadMenu_Action = XR_NULL_HANDLE;
 
-    XrAction m_cancelAction = XR_NULL_HANDLE;
-    XrAction m_interactAction = XR_NULL_HANDLE;
+    XrAction m_useLeftItemAction = XR_NULL_HANDLE;
+    XrAction m_useRightItemAction = XR_NULL_HANDLE;
 
-    XrAction m_inGame_leftTriggerAction = XR_NULL_HANDLE;
-    XrAction m_inGame_rightTriggerAction = XR_NULL_HANDLE;
+    XrAction m_map_scopeAction = XR_NULL_HANDLE;
+    XrAction m_inventoryAction = XR_NULL_HANDLE;
 
-    XrAction m_inGame_mapAndInventoryAction = XR_NULL_HANDLE;
     XrAction m_rumbleAction = XR_NULL_HANDLE;
 
     // menu actions
@@ -190,10 +239,11 @@ private:
     XrAction m_leftGripAction = XR_NULL_HANDLE; // left bumper
     XrAction m_rightGripAction = XR_NULL_HANDLE; // right bumper
 
-    XrAction m_inMenu_leftTriggerAction= XR_NULL_HANDLE;
-    XrAction m_inMenu_rightTriggerAction = XR_NULL_HANDLE;
+    XrAction m_leftTriggerAction= XR_NULL_HANDLE;
+    XrAction m_rightTriggerAction = XR_NULL_HANDLE;
 
-    XrAction m_inMenu_mapAndInventoryAction = XR_NULL_HANDLE;
+    XrAction m_inMenu_mapAction = XR_NULL_HANDLE; // menu button
+    XrAction m_inMenu_inventoryAction = XR_NULL_HANDLE; 
 
     std::unique_ptr<RND_Renderer> m_renderer;
     std::unique_ptr<RumbleManager> m_rumbleManager;

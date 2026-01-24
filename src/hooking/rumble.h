@@ -15,10 +15,11 @@ public:
         }
     }
 
-    void initializeXrPaths(XrInstance instance)
+    void initializeXrPathsAndStartTime(XrInstance instance)
     {
         xrStringToPath(instance, "/user/hand/left", &m_handSubactionPaths[0]);
         xrStringToPath(instance, "/user/hand/right", &m_handSubactionPaths[1]);
+        m_startTime = std::chrono::steady_clock::now();
     }
 
     // pattern: uint8_t* rumble pattern
@@ -44,24 +45,139 @@ public:
         stop_haptic();
     }
 
-    void startSimpleRumble(bool leftHand, double duration, float frequency, float amplitude) {
+    void stopInputsRumble(int hand, RumbleType rumbleType) {
+        auto& state = m_hapticStates[hand];
+        //Log::print<INFO>("state.active : {}", state.active);
+        if (state.active && state.inputRumble && rumbleType == state.params.rumbleType) {
+            state.endTime = std::chrono::steady_clock::now();
+            state.active = false;
+        }
+    }
 
+    void enqueueInputsRumbleCommand(const RumbleParameters& rumbleParameters) {
+        if (rumbleParameters.prioritizeThisRumble) {
+            m_inputs_rumble_queue.push(rumbleParameters);
+            return;
+        }
 
-        // duration is in seconds
-        XrHapticVibration vibration = {};
-        vibration.type = XR_TYPE_HAPTIC_VIBRATION;
-        vibration.next = nullptr;
-        vibration.duration = (XrDuration)(duration * 1e9);;
-        vibration.frequency = frequency;
-        vibration.amplitude = amplitude;
+        if (m_inputs_rumble_queue.empty())
+            m_inputs_rumble_queue.push(rumbleParameters);
+    }
 
-        XrHapticActionInfo haptic_info = {};
-        haptic_info.type = XR_TYPE_HAPTIC_ACTION_INFO;
-        haptic_info.next = nullptr;
-        haptic_info.action = m_haptic_action;
-        haptic_info.subactionPath = m_handSubactionPaths[leftHand ? 0 : 1];
+    void updateHaptics() {
+        auto now = std::chrono::steady_clock::now();
 
-        checkXRResult(xrApplyHapticFeedback(m_session, &haptic_info, (const XrHapticBaseHeader*)&vibration), "Failed to start rumble");
+        // Check for new commands in queue and assign them to the correct hand
+        while (!m_inputs_rumble_queue.empty()) {
+            RumbleParameters cmd = m_inputs_rumble_queue.front();
+            auto& state = m_hapticStates[cmd.hand]; 
+
+            // Priority Check: Don't overwrite if a high-priority rumble or the same rumble is still running
+            bool sameRumble = state.active && state.params.rumbleType == cmd.rumbleType && now < state.endTime;
+            bool highPriorityRumble = state.active && state.inputRumble && (!cmd.prioritizeThisRumble || now < state.endTime);
+            if ( sameRumble || highPriorityRumble) {
+                m_inputs_rumble_queue.pop();
+                continue;
+            }
+
+            // Initialize/Overwrite the state for this hand
+            state.active = true;
+            state.params = cmd;
+            state.startTime = now;
+            state.endTime = now + std::chrono::duration_cast<std::chrono::nanoseconds>(
+                                      std::chrono::duration<double>(cmd.effectDuration)
+                                  );
+            state.inputRumble = cmd.prioritizeThisRumble;
+
+            m_inputs_rumble_queue.pop();
+        }
+
+        // 2. Loop twice (once for each hand) to apply current vibrations
+        for (int i = 0; i < 2; ++i) {
+            auto& state = m_hapticStates[i];
+            if (!state.active) continue;
+
+            // Check if duration has expired
+            if (now >= state.endTime) {
+                state.active = false;
+                continue;
+            }
+
+            // Calculate Amplitude & Frequency
+            double currentAmplitude = state.params.amplitude;
+            double currentFrequency = state.params.frequency;
+            double elapsed = std::chrono::duration<double>(now - state.startTime).count();
+            double progress = 0.0;
+            double envelope = 1.0;
+            double wave = 0.0;
+            double omega = 0.0;
+
+            switch (state.params.rumbleType) {
+                case RumbleType::Raising:
+                    progress = glm::clamp(elapsed / state.params.effectDuration, 0.0, 1.0);
+                    envelope = progress * progress; //exponential optional. Need testing
+                    currentAmplitude *= envelope;
+                    currentFrequency *= envelope;
+
+                    // if rumble is still running at 95%, extend duration until the input is released
+                    // prevents the rumble from restarting from zero if the input is held longer than duration
+                    if (state.params.keepRumblingOnEffectEnd && progress > 0.95f)
+                    {
+                        state.params.effectDuration += 0.05;
+                        state.endTime += std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::duration<double>(0.05));
+                    }
+                    break;
+                case RumbleType::Falling:
+                    progress = glm::clamp(elapsed / state.params.effectDuration, 0.0, 1.0);
+                    envelope = (1.0 - progress) * (1.0 - progress); //exponential optional. Need testing
+                    currentAmplitude *= envelope;
+                    currentFrequency *= envelope;
+
+                    if (state.params.keepRumblingOnEffectEnd && progress > 0.95f)
+                    {
+                        state.params.effectDuration += 0.05;
+                        state.endTime += std::chrono::duration_cast<std::chrono::nanoseconds>(std::chrono::duration<double>(0.05));
+                    }
+                    break;
+                case RumbleType::OscillationSmooth:
+                    omega = 2.0 * glm::pi<double>() * state.params.oscillationFrequency;
+                    // Normalized sine wave: 0 ? 1
+                    wave = (std::sin(elapsed * omega) + 1.0) * 0.5;
+                    currentAmplitude *= wave;
+                    currentFrequency *= wave;
+                    break;
+                case RumbleType::OscillationFallingSawtoothWave:
+                    // Calculate the 'progress' of the current pulse (0.0 to 1.0)
+                    // fmod gives us the remainder, creating a repeating 0->1 ramp
+                    progress = fmod(elapsed * state.params.oscillationFrequency, 1.0);
+                    // Invert it so it starts at 1.0 and goes to 0.0
+                    wave = (1.0 - progress) * (1.0 - progress); //exponential optional. Need testing
+                    currentAmplitude *= wave; 
+                    currentFrequency *= wave;
+                    break;
+                case RumbleType::OscillationRaisingSawtoothWave:
+                    progress = fmod(elapsed * state.params.oscillationFrequency, 1.0);
+                    wave = progress * progress;
+                    currentAmplitude *= wave;
+                    currentFrequency *= wave;
+                    break;
+            }
+
+            // Apply to OpenXR
+            XrHapticVibration vibration = { XR_TYPE_HAPTIC_VIBRATION };
+            vibration.next = nullptr;
+            // Pulse duration: Set slightly longer than the frame time
+            // to ensure continuous feel without gaps.
+            vibration.duration = (XrDuration)(0.03 * 1e9);
+            vibration.frequency = (float)currentFrequency;
+            vibration.amplitude = (float)currentAmplitude;
+
+            XrHapticActionInfo haptic_info = { XR_TYPE_HAPTIC_ACTION_INFO };
+            haptic_info.action = m_haptic_action;
+            haptic_info.subactionPath = m_handSubactionPaths[state.params.hand];
+
+            xrApplyHapticFeedback(m_session, &haptic_info, (const XrHapticBaseHeader*)&vibration);
+        }
     }
 
 private:
@@ -184,4 +300,15 @@ void apply_haptic_infinite() {
 
     std::chrono::steady_clock::time_point m_haptic_start_time{};
     bool m_haptic_active = false;
+
+    std::queue<RumbleParameters> m_inputs_rumble_queue;
+    struct ActiveHaptic {
+        bool active = false;
+        bool inputRumble = false;
+        std::chrono::steady_clock::time_point startTime;
+        std::chrono::steady_clock::time_point endTime;
+        RumbleParameters params;
+    };
+    ActiveHaptic m_hapticStates[2]; // 0 = left, 1 = right
+    std::chrono::steady_clock::time_point m_startTime;
 };

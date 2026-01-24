@@ -74,7 +74,18 @@ void CemuHooks::hook_UpdateCameraForGameplay(PPCInterpreter_t* hCPU) {
         readMemory(s_playerAddress, &actor);
 
         PlayerMoveBitFlags moveBits = actor.moveBitFlags.getLE();
-        s_isSwimming = (std::to_underlying(moveBits) & std::to_underlying(PlayerMoveBitFlags::SWIMMING_1024)) != 0;
+        s_isSwimming = ((std::to_underlying(moveBits) & std::to_underlying(PlayerMoveBitFlags::IS_SWIMMING_OR_CLIMBING)) != 0) && 
+            ((std::to_underlying(moveBits) & std::to_underlying(PlayerMoveBitFlags::IS_SWIMMING)) != 0);
+
+        // Todo: move those and their hooks in controls.cpp ?
+        auto gameState = VRManager::instance().XR->m_gameState.load();
+        // Unreliable flag, need to investigate
+        gameState.is_climbing = ((std::to_underlying(moveBits) & std::to_underlying(PlayerMoveBitFlags::IS_SWIMMING_OR_CLIMBING)) != 0) && 
+            ((std::to_underlying(moveBits) & std::to_underlying(PlayerMoveBitFlags::IS_CLIMBING_WALL)) != 0) ||
+            s_isLadderClimbing == 2;
+        gameState.is_riding_mount = s_isRiding == 2 ? true : false;
+        gameState.is_paragliding = (std::to_underlying(moveBits) & std::to_underlying(PlayerMoveBitFlags::IS_GLIDER_ACTIVE)) != 0;
+        VRManager::instance().XR->m_gameState.store(gameState);
 
         // read player MTX
         BEMatrix34& mtx = actor.mtx;
@@ -182,7 +193,7 @@ void CemuHooks::hook_GetRenderCamera(PPCInterpreter_t* hCPU) {
             playerPos.y -= hardcodedRidingOffset;
         }
         else if (s_isSwimming) {
-            playerPos.y += hardcodedSwimOffset;
+            playerPos.y += hardcodedSwimOffset + GetSettings().playerHeightSetting.getLE();
         }
         else {
             playerPos.y += GetSettings().playerHeightSetting.getLE();
@@ -782,16 +793,6 @@ void CemuHooks::hook_FixLadder(PPCInterpreter_t* hCPU) {
     }
 }
 
-void CemuHooks::hook_PlayerLadderFix(PPCInterpreter_t* hCPU) {
-    hCPU->gpr[0] = hCPU->sprNew.LR;
-    hCPU->instructionPointer = 0x02D07CEC;
-
-    if (IsFirstPerson()) {
-        s_isLadderClimbing = 2;
-    }
-}
-
-
 void CemuHooks::hook_PlayerIsRiding(PPCInterpreter_t* hCPU) {
     hCPU->instructionPointer = hCPU->sprNew.LR;
 
@@ -799,7 +800,13 @@ void CemuHooks::hook_PlayerIsRiding(PPCInterpreter_t* hCPU) {
     if (isRiding && IsFirstPerson()) {
         s_isRiding = 2;
     }
+}
 
-    // todo: remove this once hooked up to input system. Also, move to a better function, maybe controls.cpp?
-    //Log::print<VERBOSE>("Player is riding hook called: {}", hCPU->gpr[3]);
+void CemuHooks::hook_PlayerLadderFix(PPCInterpreter_t* hCPU) {
+    hCPU->gpr[0] = hCPU->sprNew.LR;
+    hCPU->instructionPointer = 0x02D07CEC;
+
+    if (IsFirstPerson()) {
+        s_isLadderClimbing = 2;
+    }
 }
