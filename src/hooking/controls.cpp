@@ -668,11 +668,11 @@ void CemuHooks::hook_InjectXRInput(PPCInterpreter_t* hCPU) {
     VPADStatus vpadStatus = {};
 
     auto* renderer = VRManager::instance().XR->GetRenderer();
-    if (renderer) {
+    if (!renderer) {
         return;
     }
     auto* imguiOverlay = renderer->m_imguiOverlay.get();
-    if (imguiOverlay) {
+    if (!imguiOverlay) {
         return;
     }
 

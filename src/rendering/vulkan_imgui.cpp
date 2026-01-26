@@ -532,35 +532,20 @@ void RND_Renderer::ImGuiOverlay::DrawHelpMenu() {
                 ImGui::SameLine();
                 if (ImGui::RadioButton("Third Person", &cameraMode, 0)) { settings.cameraMode = CameraMode::THIRD_PERSON; changed = true; }
 
+                ImGui::Separator();
+                ImGui::Text("Camera / Player Options");
                 if (cameraMode == 0) {
                     float distance = settings.thirdPlayerDistance;
-                    if (ImGui::SliderFloat("Camera Distance", &distance, 0.4f, 1.1f, "%.2f m")) {
+                    if (ImGui::SliderFloat("Camera Distance", &distance, 0.4f, 1.1f, "%.2f")) {
                         settings.thirdPlayerDistance = distance;
                         changed = true;
                     }
                 }
                 else {
-                }
-
-                ImGui::Separator();
-                ImGui::Text("Comfort & Accessibility");
-                if (cameraMode == 1) {
-                    bool leftHanded = settings.leftHanded;
-                    if (ImGui::Checkbox("Left Handed Mode", &leftHanded)) {
-                        settings.leftHanded = leftHanded ? 1 : 0;
-                        changed = true;
-                    }
-
-                    bool guiFollow = settings.uiFollowsGaze;
-                    if (ImGui::Checkbox("UI Follows View", &guiFollow)) {
-                        settings.uiFollowsGaze = guiFollow ? 1 : 0;
-                        changed = true;
-                    }
-
-                    ImGui::Separator();
                     ImGui::Text("Player Height Offset");
                     float height = settings.playerHeightOffset;
-                    if (ImGui::SliderFloat("Height (meters)", &height, -0.5f, 1.0f, "%.2f")) {
+                    std::string heightOffsetValueStr = std::format("{0}{1:.02f} meters / {0}{2:.02f} feet", (height > 0.0f ? "+" : ""), height, height * 3.28084f);
+                    if (ImGui::SliderFloat("Height Offset", &height, -0.5f, 1.0f, heightOffsetValueStr.c_str())) {
                         settings.playerHeightOffset = height;
                         changed = true;
                     }
@@ -568,6 +553,23 @@ void RND_Renderer::ImGuiOverlay::DrawHelpMenu() {
                         settings.playerHeightOffset = 0.0f;
                         changed = true;
                     }
+
+                    bool leftHanded = settings.leftHanded;
+                    if (ImGui::Checkbox("Left Handed Mode", &leftHanded)) {
+                        settings.leftHanded = leftHanded ? 1 : 0;
+                        changed = true;
+                    }
+                }
+
+                if (cameraMode == 1) {
+                    ImGui::Separator();
+                    ImGui::Text("UI");
+                    bool guiFollow = settings.uiFollowsGaze;
+                    if (ImGui::Checkbox("UI Follows View", &guiFollow)) {
+                        settings.uiFollowsGaze = guiFollow ? 1 : 0;
+                        changed = true;
+                    }
+
                 }
 
                 ImGui::Separator();
@@ -609,8 +611,6 @@ void RND_Renderer::ImGuiOverlay::DrawHelpMenu() {
                         settings.buggyAngularVelocity = AngularVelocityFixerMode::AUTO;
                     }
                 }
-
-
 
                 ImGui::PopItemWidth();
                 ImGui::Unindent(10.0f);
