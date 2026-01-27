@@ -31,6 +31,10 @@ glm::fvec3 s_wsCameraPosition = glm::fvec3();
 glm::fquat s_wsCameraRotation = glm::identity<glm::fquat>();
 bool s_isSwimming = false;
 bool s_isCrouching = false;
+bool s_wasCrouching = false;
+float actualCrouchOffset = 0.0f;
+std::chrono::steady_clock::time_point crouch_state_change_time;
+
 uint32_t s_isLadderClimbing = 0;
 uint32_t s_isRiding = 0;
 
@@ -92,6 +96,32 @@ void CemuHooks::hook_UpdateCameraForGameplay(PPCInterpreter_t* hCPU) {
         gameState.is_paragliding = (std::to_underlying(moveBits) & std::to_underlying(PlayerMoveBitFlags::IS_GLIDER_ACTIVE)) != 0;
         VRManager::instance().XR->m_gameState.store(gameState);
 
+        auto now = std::chrono::steady_clock::now();
+        std::chrono::milliseconds crouchLerpDuration{ 150 };
+        if (s_isCrouching != s_wasCrouching)
+        {
+            crouch_state_change_time = now;
+        }
+        auto test = 0.8f;
+        if (now <= crouch_state_change_time + crouchLerpDuration)
+        {
+            auto elapsed = std::chrono::duration<float>(now - crouch_state_change_time);
+            auto duration = std::chrono::duration<float>(crouchLerpDuration);
+            float t = elapsed.count() / duration.count();
+            t = glm::clamp(t, 0.0f, 1.0f);
+            if (s_isCrouching)
+            {
+                actualCrouchOffset = glm::mix(0.0f, test, t);
+            }
+            else
+            {
+                actualCrouchOffset = glm::mix(test, 0.0f, t);
+            }
+        }
+        else {
+            actualCrouchOffset = s_isCrouching ? test : 0.0f;
+        }
+
         // read player MTX
         BEMatrix34& mtx = actor.mtx;
         glm::fvec3 playerPos = actor.mtx.getPos().getLE();
@@ -103,11 +133,8 @@ void CemuHooks::hook_UpdateCameraForGameplay(PPCInterpreter_t* hCPU) {
             float playerHeight = VRManager::instance().XR->GetRenderer()->GetMiddlePose().value()[3].y;
             playerPos.y += 1.73f - playerHeight;
         }
-        else if (s_isCrouching){
-            playerPos.y -= hardcodedCrouchOffset;
-        }
         else {
-            playerPos.y += GetSettings().GetPlayerHeightOffset();
+            playerPos.y += GetSettings().GetPlayerHeightOffset() - actualCrouchOffset;
         }
 
 
@@ -125,6 +152,8 @@ void CemuHooks::hook_UpdateCameraForGameplay(PPCInterpreter_t* hCPU) {
         if (s_isRiding > 0) {
             s_isRiding--;
         }
+
+        s_wasCrouching = s_isCrouching;
 
         glm::mat4 playerMtx4 = glm::inverse(glm::translate(glm::identity<glm::mat4>(), playerPos) * glm::mat4(s_wsCameraRotation));
         existingGameMtx = playerMtx4;
@@ -203,11 +232,8 @@ void CemuHooks::hook_GetRenderCamera(PPCInterpreter_t* hCPU) {
         else if (s_isSwimming) {
             playerPos.y += hardcodedSwimOffset + GetSettings().GetPlayerHeightOffset();
         }
-        else if (s_isCrouching) {
-            playerPos.y -= hardcodedCrouchOffset;
-        }
         else {
-            playerPos.y += GetSettings().GetPlayerHeightOffset();
+            playerPos.y += GetSettings().GetPlayerHeightOffset() - actualCrouchOffset;
         }
 
         basePos = playerPos;
@@ -569,11 +595,8 @@ std::pair<glm::vec3, glm::fquat> CemuHooks::CalculateVRWorldPose(const BESeadLoo
         else if (s_isSwimming) {
             playerPos.y += hardcodedSwimOffset;
         }
-        else if (s_isCrouching){
-            playerPos.y -= hardcodedCrouchOffset;
-        }
         else {
-            playerPos.y += GetSettings().GetPlayerHeightOffset();
+            playerPos.y += GetSettings().GetPlayerHeightOffset() - actualCrouchOffset;
         }
 
         basePos = playerPos;
