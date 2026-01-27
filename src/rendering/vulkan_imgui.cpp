@@ -419,7 +419,6 @@ void RND_Renderer::ImGuiOverlay::ProcessInputs(OpenXR::InputState& inputs) {
         stick = inputs.inGame.move;
         backDown = inputs.inGame.jump.currentState;
         confirmDown = inputs.inGame.run_interact_cancel.currentState;
-        Log::print<INFO>("backDown = {}, confirmDown = {}", backDown, confirmDown);
     }
     else {
         stick = inputs.inMenu.navigate;
