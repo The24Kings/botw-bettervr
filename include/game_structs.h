@@ -295,6 +295,8 @@ enum class PlayerMoveBitFlags : uint32_t {
     GET_HIT_MAYBE_UNABLE_TO_INTERACT = 1u << 31
 };
 
+ENABLE_BITMASK_OPERATORS(PlayerMoveBitFlags);
+
 struct PlayerBase : PlayerOrEnemy {
     PADDED_BYTES(0x838, 0x8D8);
     BEType<PlayerMoveBitFlags> moveBitFlags;

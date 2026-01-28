@@ -215,10 +215,8 @@ enum class LogType {
 };
 
 using enum LogType;
+ENABLE_BITMASK_OPERATORS(LogType);
 
-constexpr LogType operator|(LogType log, LogType rhs) {
-    return static_cast<LogType>(static_cast<int>(log) | static_cast<int>(rhs));
-}
 class Log {
 public:
     Log();

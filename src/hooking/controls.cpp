@@ -903,8 +903,8 @@ void CemuHooks::hook_InjectXRInput(PPCInterpreter_t* hCPU) {
     rumbleMgr->updateHaptics();
 
     // sticks
-    static uint32_t oldXRStickHold = 0;
-    uint32_t newXRStickHold = 0;
+    static VPADButtons oldXRStickHold = VPAD_BUTTON_NONE;
+    VPADButtons newXRStickHold = VPAD_BUTTON_NONE;
 
     // movement/navigation stick
     vpadStatus.leftStick = { leftStickSource.currentState.x + vpadStatus.leftStick.x.getLE(), leftStickSource.currentState.y + vpadStatus.leftStick.y.getLE() };

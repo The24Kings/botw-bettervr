@@ -41,6 +41,7 @@ struct PPCInterpreter_t {
 };
 
 enum VPADButtons : uint32_t {
+    VPAD_BUTTON_NONE = 0,
     VPAD_BUTTON_A = 0x8000,
     VPAD_BUTTON_B = 0x4000,
     VPAD_BUTTON_X = 0x2000,
@@ -69,6 +70,7 @@ enum VPADButtons : uint32_t {
     VPAD_STICK_L_EMULATION_UP = 0x10000000,
     VPAD_STICK_L_EMULATION_DOWN = 0x08000000,
 };
+ENABLE_BITMASK_OPERATORS(VPADButtons);
 
 struct BEDir {
     BEVec3 x;

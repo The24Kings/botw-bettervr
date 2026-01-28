@@ -145,15 +145,59 @@ inline constexpr bool is_instance_of_v = std::false_type{};
 template<template<class...> class U, class... Vs>
 inline constexpr bool is_instance_of_v<U<Vs...>,U> = std::true_type{};
 
-template <typename T1, typename T2>
-constexpr bool HAS_FLAG(T1 flags, T2 test_flag) {
-    return ((uint64_t)(flags) & (uint64_t)test_flag) == (uint64_t)(test_flag);
+template <typename T>
+requires std::is_enum_v<T>
+constexpr bool HAS_FLAG(T value, T mask) {
+    auto v = std::to_underlying(value);
+    auto m = std::to_underlying(mask);
+    return (v & m) == m;
 }
 
 template <typename T>
-bool HasEnumFlag(T enumVal, T enumFlag) {
-    return (std::to_underlying(enumVal) & std::to_underlying(enumFlag)) != 0;
+struct is_bitmask_enum : std::false_type {};
+
+template <typename T>
+using enable_if_bitmask_t = std::enable_if_t<is_bitmask_enum<T>::value, T>;
+
+#define ENABLE_BITMASK_OPERATORS(x) \
+    template <>                     \
+    struct is_bitmask_enum<x> : std::true_type {};
+
+// Bitwise OR
+template <typename T>
+constexpr enable_if_bitmask_t<T> operator|(T lhs, T rhs) {
+    using U = std::underlying_type_t<T>;
+    return static_cast<T>(static_cast<U>(lhs) | static_cast<U>(rhs));
 }
+
+// Bitwise AND
+template <typename T>
+constexpr enable_if_bitmask_t<T> operator&(T lhs, T rhs) {
+    using U = std::underlying_type_t<T>;
+    return static_cast<T>(static_cast<U>(lhs) & static_cast<U>(rhs));
+}
+
+// Bitwise XOR
+template <typename T>
+constexpr enable_if_bitmask_t<T> operator^(T lhs, T rhs) {
+    using U = std::underlying_type_t<T>;
+    return static_cast<T>(static_cast<U>(lhs) ^ static_cast<U>(rhs));
+}
+
+// Bitwise NOT
+template <typename T>
+constexpr enable_if_bitmask_t<T> operator~(T val) {
+    using U = std::underlying_type_t<T>;
+    return static_cast<T>(~static_cast<U>(val));
+}
+
+// Assignment OR
+template <typename T>
+constexpr enable_if_bitmask_t<T>& operator|=(T& lhs, T rhs) {
+    lhs = lhs | rhs;
+    return lhs;
+}
+
 
 template <typename T>
 inline T swapEndianness(T val) {
@@ -570,6 +614,3 @@ struct data_VRProjectionMatrixOut {
 #include "game_structs.h"
 #include "cemu.h"
 #include "utils/logger.h"
-
-constexpr uint32_t SEMAPHORE_TO_VULKAN = 0;
-constexpr uint32_t SEMAPHORE_TO_D3D12 = 1;
