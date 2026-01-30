@@ -153,12 +153,12 @@ public:
         glm::vec3 x1 = arm1Dir * boneForwardSign;
         glm::vec3 z1 = planeNormal;
         glm::vec3 y1 = glm::cross(z1, x1);
-        glm::mat3 rot1World = glm::mat3(x1, y1, z1);
+        glm::mat3 rot1World = glm::mat3(x1, -y1, -z1);
 
         glm::vec3 x2 = arm2Dir * boneForwardSign;
         glm::vec3 z2 = planeNormal;
         glm::vec3 y2 = glm::cross(z2, x2);
-        glm::mat3 rot2World = glm::mat3(x2, y2, z2);
+        glm::mat3 rot2World = glm::mat3(x2, -y2, -z2);
 
         // convert to local space
         glm::mat4 arm1Local = glm::inverse(parentWorld) * glm::mat4(rot1World);
