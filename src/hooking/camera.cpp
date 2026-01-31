@@ -2,6 +2,9 @@
 #include "instance.h"
 #include "rendering/openxr.h"
 
+bool CemuHooks::UseMonoFrameBufferTemporarilyDuringMenusOrPictures() {
+    return IsScreenOpen(ScreenId::PauseMenuInfo_00) || VRManager::instance().XR->GetRenderer()->IsGameCapturing3DFrameBuffer();
+}
 
 void CemuHooks::hook_BeginCameraSide(PPCInterpreter_t* hCPU) {
     hCPU->instructionPointer = hCPU->sprNew.LR;
@@ -335,6 +338,11 @@ void CemuHooks::hook_GetRenderProjection(PPCInterpreter_t* hCPU) {
         return;
     }
 
+    if (UseMonoFrameBufferTemporarilyDuringMenusOrPictures()) {
+        return;
+    }
+
+
     uint32_t projectionIn = hCPU->gpr[3];
     uint32_t projectionOut = hCPU->gpr[12];
     OpenXR::EyeSide side = hCPU->gpr[0] == 0 ? EyeSide::LEFT : EyeSide::RIGHT;
@@ -400,6 +408,10 @@ void CemuHooks::hook_ModifyLightPrePassProjectionMatrix(PPCInterpreter_t* hCPU) 
     if (UseBlackBarsDuringEvents()) {
         return;
     }
+    
+    if (UseMonoFrameBufferTemporarilyDuringMenusOrPictures()) {
+        return;
+    }
 
     uint32_t projectionIn = hCPU->gpr[3];
     OpenXR::EyeSide side = hCPU->gpr[11] == 0 ? EyeSide::LEFT : EyeSide::RIGHT;
@@ -460,6 +472,10 @@ void CemuHooks::hook_ModifyProjectionUsingCamera(PPCInterpreter_t* hCPU) {
     }
 
     if (UseBlackBarsDuringEvents()) {
+        return;
+    }
+
+    if (UseMonoFrameBufferTemporarilyDuringMenusOrPictures()) {
         return;
     }
 

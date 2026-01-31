@@ -130,6 +130,11 @@ void RND_Renderer::EndFrame() {
         m_renderFrames[frameIdx].Reset();
     }
 
+    // decrement camera capture counter since its active only for a few frames
+    if (m_cameraIsCapturing3DFrameBuffer > 0) {
+        --m_cameraIsCapturing3DFrameBuffer;
+    }
+
     m_lastFrameWorkTimeMs = std::chrono::duration<double, std::milli>(std::chrono::high_resolution_clock::now() - m_frameStartTime).count();
 
     XrFrameEndInfo frameEndInfo = { XR_TYPE_FRAME_END_INFO };

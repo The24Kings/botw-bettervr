@@ -19,6 +19,7 @@ public:
         std::atomic_bool copiedDepth[2] = { false, false };
         std::atomic_bool copied2D = false;
         std::atomic_bool presented3D = false;
+        std::atomic_uint8_t cameraIsCapturing3DFramebuffer = 0;
 
         std::unique_ptr<VulkanTexture> mainFramebuffer;
         std::unique_ptr<VulkanTexture> hudFramebuffer;
@@ -41,6 +42,8 @@ public:
             copiedDepth[0] = false;
             copiedDepth[1] = false;
             copied2D = false;
+            if (cameraIsCapturing3DFramebuffer > 0)
+                --cameraIsCapturing3DFramebuffer;
 
             ranMotionAnalysis[0] = false;
             ranMotionAnalysis[1] = false;
@@ -209,6 +212,12 @@ public:
     bool IsInitialized() {
         return m_isInitialized;
     }
+    bool IsGameCapturing3DFrameBuffer() const {
+        return m_cameraIsCapturing3DFrameBuffer > 0;
+    }
+    void SignalGameCapturing3DFrameBuffer() {
+        m_cameraIsCapturing3DFrameBuffer = 1;
+    }
 
 protected:
     XrSession m_session;
@@ -218,6 +227,7 @@ protected:
 
     std::atomic_bool m_isInitialized = false;
     std::atomic_bool m_presented2DLastFrame = false;
+    std::atomic_uint8_t m_cameraIsCapturing3DFrameBuffer = 0;
 
     // Full-frame timing derived from OpenXR timestamps (XrTime is in nanoseconds)
     XrTime m_lastPredictedDisplayTime = 0;

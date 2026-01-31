@@ -178,3 +178,34 @@ blr
 
 0x039B3044 = bla hookPostHDRComposedImage
 ;0x0397AB30 = cmpw r3, r3
+
+
+; for one frame, disable clearing the framebuffer (used for separating 2D hud from 3D scene)
+custom_turnOnTempLayerCopy:
+mflr r0
+stwu r1, -0x10(r1)
+stw r0, 0x14(r1)
+stw r3, 0x0C(r1)
+stw r4, 0x08(r1)
+stw r5, 0x04(r1)
+
+; original code
+lwz r3, 0x86C(r3)
+li r4, 1
+stb r4, 0x318(r3)
+
+lis r4, currentFrameCounter@ha
+lwz r4, currentFrameCounter@l(r4)
+lis r5, currentEyeSide@ha
+lwz r5, currentEyeSide@l(r5)
+bla import.coreinit.hook_FixCameraSaveFilesAndInventory
+
+lwz r5, 0x04(r1)
+lwz r4, 0x08(r1)
+lwz r3, 0x0C(r1)
+lwz r0, 0x14(r1)
+addi r1, r1, 0x10
+mtlr r0
+blr
+
+0x0340A8A8 = ba custom_turnOnTempLayerCopy

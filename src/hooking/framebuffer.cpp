@@ -40,6 +40,19 @@ void VkDeviceOverrides::DestroyImage(const vkroots::VkDeviceDispatch& pDispatch,
     pDispatch.DestroyImage(device, image, pAllocator);
 }
 
+
+void CemuHooks::hook_FixCameraSaveFilesAndInventory(PPCInterpreter_t* hCPU) {
+    hCPU->instructionPointer = hCPU->sprNew.LR;
+
+    uint32_t isEnabling3DFramebufferCapture = hCPU->gpr[3];
+    EyeSide side = (EyeSide)hCPU->gpr[4];
+    uint32_t frameIdx = hCPU->gpr[5];
+
+    Log::print<PPC>("hook_FixCameraSaveFilesAndInventory: isEnabling3DFramebufferCapture={}, side={}, frameIdx={}", isEnabling3DFramebufferCapture, side, frameIdx);
+    VRManager::instance().XR->GetRenderer()->SignalGameCapturing3DFrameBuffer();
+}
+
+
 void VkDeviceOverrides::CmdClearColorImage(const vkroots::VkCommandBufferDispatch& pDispatch, VkCommandBuffer commandBuffer, VkImage image, VkImageLayout imageLayout, const VkClearColorValue* pColor, uint32_t rangeCount, const VkImageSubresourceRange* pRanges) {
     // check whether the magic values are there, and which order they are in to determine which eye
     OpenXR::EyeSide side = (OpenXR::EyeSide)-1;
@@ -128,6 +141,13 @@ void VkDeviceOverrides::CmdClearColorImage(const vkroots::VkCommandBufferDispatc
             VulkanUtils::DebugPipelineBarrier(commandBuffer);
         };
 
+        RND_Renderer::RenderFrame& frame = renderer->GetFrame(frameIdx);
+
+        auto clearFramebuffer = [&](bool disableAlpha) -> void {
+            VkClearColorValue clearColor = disableAlpha ? VkClearColorValue{ { 0.0f, 0.0f, 0.0f, 1.0f } } : VkClearColorValue{ { 0.0f, 0.0f, 0.0f, 0.0f } };
+            pDispatch.CmdClearColorImage(commandBuffer, image, imageLayout, &clearColor, rangeCount, pRanges);
+        };
+
         // 3D layer - color texture for 3D rendering
         if (captureIdx == 0) {
             // check if the color texture has the appropriate texture format
@@ -149,24 +169,19 @@ void VkDeviceOverrides::CmdClearColorImage(const vkroots::VkCommandBufferDispatc
 
             if (image != s_curr3DColorImage) {
                 Log::print<RENDERING>("Color image is not the same as the current 3D color image! ({} != {})", (void*)image, (void*)s_curr3DColorImage);
-                VkClearColorValue clearColor;
-                if (VRManager::instance().XR->GetRenderer()->IsRendering3D(frameIdx)) {
-                    clearColor = {{ 0.0f, 0.0f, 0.0f, 0.0f }};
-                }
-                else {
-                    clearColor = {{ 0.0f, 0.0f, 0.0f, 1.0f }};
-                }
                 returnToLayout();
-                return pDispatch.CmdClearColorImage(commandBuffer, image, imageLayout, &clearColor, rangeCount, pRanges);
+                return clearFramebuffer(!VRManager::instance().XR->GetRenderer()->IsRendering3D(frameIdx));
             }
 
             if (renderer->GetFrame(frameIdx).copiedColor[side]) {
                 // the color texture has already been copied to the layer
                 Log::print<RENDERING>("A 3D color texture is already been copied for the current frame!");
 
-                VkClearColorValue clearColor = {{ 0.0f, 0.0f, 0.0f, 0.0f }};
                 returnToLayout();
-                return pDispatch.CmdClearColorImage(commandBuffer, image, imageLayout, &clearColor, rangeCount, pRanges);
+                if (CemuHooks::UseMonoFrameBufferTemporarilyDuringMenusOrPictures()) {
+                    return;
+                }
+                return clearFramebuffer(false);
             }
 
             // note: This uses vkCmdCopyImage to copy the image to the D3D12-created interop texture. s_activeCopyOperations queues a semaphore for the D3D12 side to wait on.
@@ -178,6 +193,10 @@ void VkDeviceOverrides::CmdClearColorImage(const vkroots::VkCommandBufferDispatc
                 s_activeCopyOperations.emplace_back(commandBuffer, texture);
             }
 
+            if (CemuHooks::UseMonoFrameBufferTemporarilyDuringMenusOrPictures()) {
+                return;
+            }
+
             // imgui needs only one eye to render Cemu's 2D output, so use right side since it looks better
             if (side == EyeSide::RIGHT) {
                 // note: Uses vkCmdCopyImage to copy the (right-eye-only) image to the imgui overlay's texture
@@ -186,23 +205,21 @@ void VkDeviceOverrides::CmdClearColorImage(const vkroots::VkCommandBufferDispatc
             }
 
             // clear the image to be transparent to allow for the HUD to be rendered on top of it which results in a transparent HUD layer
-            VkClearColorValue clearColor = {{ 0.0f, 0.0f, 0.0f, 0.0f }};
             returnToLayout();
-            return pDispatch.CmdClearColorImage(commandBuffer, image, imageLayout, &clearColor, rangeCount, pRanges);
+            return clearFramebuffer(false);
         }
 
         // 2D layer - color texture for HUD rendering
         if (captureIdx == 2) {
             bool hudCopied = renderer->GetFrame(frameIdx).copied2D;
 
-            if (side == OpenXR::EyeSide::LEFT) {
+            if (side == EyeSide::LEFT) {
                 if (hudCopied) {
                     // the 2D texture has already been copied to the layer
                     Log::print<RENDERING>("A 2D texture has already been copied for the current frame!");
 
-                    VkClearColorValue clearColor = {{ 0.0f, 0.0f, 0.0f, 0.0f }};
                     returnToLayout();
-                    return pDispatch.CmdClearColorImage(commandBuffer, image, imageLayout, &clearColor, rangeCount, pRanges);
+                    return clearFramebuffer(false);
                 }
                 else {
                     // provide the HUD texture to the imgui overlay we'll use to recomposite Cemu's original flatscreen rendering
@@ -232,7 +249,7 @@ void VkDeviceOverrides::CmdClearColorImage(const vkroots::VkCommandBufferDispatc
                     return;
                 }
             }
-            if (side == OpenXR::EyeSide::RIGHT) {
+            if (side == EyeSide::RIGHT) {
                 // render the imgui overlay on the right side
                 if (imguiOverlay) {
                     // render imgui, and then copy the framebuffer to the 2D layer
@@ -244,12 +261,12 @@ void VkDeviceOverrides::CmdClearColorImage(const vkroots::VkCommandBufferDispatc
                 }
 
                 if (hudCopied) {
-                    VkClearColorValue clearColor = {{ 0.0f, 0.0f, 0.0f, 0.0f }};
                     returnToLayout();
-                    return pDispatch.CmdClearColorImage(commandBuffer, image, imageLayout, &clearColor, rangeCount, pRanges);
+                    return clearFramebuffer(false);
                 }
             }
         }
+        returnToLayout();
         return;
     }
     else {
