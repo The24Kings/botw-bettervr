@@ -24,6 +24,7 @@ public:
     void UpdateKeyboardControls();
     void DrawEntityInspector();
     static void DrawFPSOverlay(class RND_Renderer* renderer);
+    static void DrawFPSOverlayContent(class RND_Renderer* renderer, bool renderText);
 
     struct EntityValue {
         std::string value_name;

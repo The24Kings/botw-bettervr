@@ -57,14 +57,14 @@ struct SpearProfile : WeaponProfile {
 
         // stab_DotThreshold = 0.85f;
         stab_SpeedThreshold = 0.2f; // m/s
-        stab_AccThreshold = 5.0f;                                  // m/s²
+        stab_AccThreshold = 5.0f;                                  // m/s squared
         stab_LinearSteadinessThreshold = glm::cos(glm::pi<float>()/6); // use 30 deg cone for steadiness
         stab_AngularSteadinessThreshold = glm::pi<float>() / 18; // [rad] Use 10 deg cone
         stab_travelDistance = 0.3f;
 
         slash_SpeedThreshold = 7.0f;
         slash_AccThreshold = 7.0f;
-        slash_SteadinessThreshold = glm::cos(glm::pi<float>() / 4); // 45 deg | portion of direction vector of normalized angular velocity pointed in the right direction
+        slash_SteadinessThreshold = glm::cos(glm::pi<float>() / 4); // 45 deg / portion of direction vector of normalized angular velocity pointed in the right direction
         slash_travelAngle = glm::pi<float>()/6.0f; // 30 deg minimum
         slash_AccDriftThreshold = 0.2f;
     }

@@ -1,13 +1,107 @@
-#include "instance.h"
-#include "vulkan.h"
-#include "utils/controller_image.h"
+﻿#include "hooking/cemu_hooks.h"
 #include "hooking/entity_debugger.h"
-#include "hooking/cemu_hooks.h"
+#include "instance.h"
 #include "utils/vulkan_utils.h"
+#include "vulkan.h"
 
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 
+// include font and assets
+#include "font_kenney.h"
+#include "font_roboto.h"
+#include "utils/controller_image.h"
+
+
+void SetupImGuiStyle() {
+    // Dark Ruda style by Raikiri from ImThemes
+    ImGuiStyle& style = ImGui::GetStyle();
+
+    style.Alpha = 1.0f;
+    style.DisabledAlpha = 0.6f;
+    style.WindowPadding = ImVec2(8.0f, 8.0f);
+    style.WindowRounding = 0.0f;
+    style.WindowBorderSize = 1.0f;
+    style.WindowMinSize = ImVec2(32.0f, 32.0f);
+    style.WindowTitleAlign = ImVec2(0.0f, 0.5f);
+    style.WindowMenuButtonPosition = ImGuiDir_Left;
+    style.ChildRounding = 0.0f;
+    style.ChildBorderSize = 1.0f;
+    style.PopupRounding = 0.0f;
+    style.PopupBorderSize = 1.0f;
+    style.FramePadding = ImVec2(4.0f, 3.0f);
+    style.FrameRounding = 4.0f;
+    style.FrameBorderSize = 0.0f;
+    style.ItemSpacing = ImVec2(8.0f, 4.0f);
+    style.ItemInnerSpacing = ImVec2(4.0f, 4.0f);
+    style.CellPadding = ImVec2(4.0f, 2.0f);
+    style.IndentSpacing = 21.0f;
+    style.ColumnsMinSpacing = 6.0f;
+    style.ScrollbarSize = 14.0f;
+    style.ScrollbarRounding = 9.0f;
+    style.GrabMinSize = 10.0f;
+    style.GrabRounding = 4.0f;
+    style.TabRounding = 1.0f;
+    style.TabBorderSize = 0.2f;
+    //style.TabMinWidthForCloseButton = 0.0f;
+    style.ColorButtonPosition = ImGuiDir_Right;
+    style.ButtonTextAlign = ImVec2(0.5f, 0.5f);
+    style.SelectableTextAlign = ImVec2(0.0f, 0.0f);
+
+    style.Colors[ImGuiCol_Text] = ImVec4(0.9490196f, 0.95686275f, 0.9764706f, 1.0f);
+    style.Colors[ImGuiCol_TextDisabled] = ImVec4(0.35686275f, 0.41960785f, 0.46666667f, 1.0f);
+    style.Colors[ImGuiCol_WindowBg] = ImVec4(0.10980392f, 0.14901961f, 0.16862746f, 1.0f);
+    style.Colors[ImGuiCol_ChildBg] = ImVec4(0.14901961f, 0.1764706f, 0.21960784f, 1.0f);
+    style.Colors[ImGuiCol_PopupBg] = ImVec4(0.078431375f, 0.078431375f, 0.078431375f, 0.94f);
+    style.Colors[ImGuiCol_Border] = ImVec4(0.078431375f, 0.09803922f, 0.11764706f, 1.0f);
+    style.Colors[ImGuiCol_BorderShadow] = ImVec4(0.0f, 0.0f, 0.0f, 0.0f);
+    style.Colors[ImGuiCol_FrameBg] = ImVec4(0.2f, 0.24705882f, 0.28627452f, 1.0f);
+    style.Colors[ImGuiCol_FrameBgHovered] = ImVec4(0.11764706f, 0.2f, 0.2784314f, 1.0f);
+    style.Colors[ImGuiCol_FrameBgActive] = ImVec4(0.08627451f, 0.11764706f, 0.13725491f, 1.0f);
+    style.Colors[ImGuiCol_TitleBg] = ImVec4(0.08627451f, 0.11764706f, 0.13725491f, 0.65f);
+    style.Colors[ImGuiCol_TitleBgActive] = ImVec4(0.078431375f, 0.09803922f, 0.11764706f, 1.0f);
+    style.Colors[ImGuiCol_TitleBgCollapsed] = ImVec4(0.0f, 0.0f, 0.0f, 0.51f);
+    style.Colors[ImGuiCol_MenuBarBg] = ImVec4(0.14901961f, 0.1764706f, 0.21960784f, 1.0f);
+    style.Colors[ImGuiCol_ScrollbarBg] = ImVec4(0.019607844f, 0.019607844f, 0.019607844f, 0.39f);
+    style.Colors[ImGuiCol_ScrollbarGrab] = ImVec4(0.2f, 0.24705882f, 0.28627452f, 1.0f);
+    style.Colors[ImGuiCol_ScrollbarGrabHovered] = ImVec4(0.1764706f, 0.21960784f, 0.24705882f, 1.0f);
+    style.Colors[ImGuiCol_ScrollbarGrabActive] = ImVec4(0.08627451f, 0.20784314f, 0.30980393f, 1.0f);
+    style.Colors[ImGuiCol_CheckMark] = ImVec4(0.2784314f, 0.5568628f, 1.0f, 1.0f);
+    style.Colors[ImGuiCol_SliderGrab] = ImVec4(0.2784314f, 0.5568628f, 1.0f, 1.0f);
+    style.Colors[ImGuiCol_SliderGrabActive] = ImVec4(0.36862746f, 0.60784316f, 1.0f, 1.0f);
+    style.Colors[ImGuiCol_Button] = ImVec4(0.2f, 0.24705882f, 0.28627452f, 1.0f);
+    style.Colors[ImGuiCol_ButtonHovered] = ImVec4(0.2784314f, 0.5568628f, 1.0f, 1.0f);
+    style.Colors[ImGuiCol_ButtonActive] = ImVec4(0.05882353f, 0.5294118f, 0.9764706f, 1.0f);
+    style.Colors[ImGuiCol_Header] = ImVec4(0.2f, 0.24705882f, 0.28627452f, 0.55f);
+    style.Colors[ImGuiCol_HeaderHovered] = ImVec4(0.25882354f, 0.5882353f, 0.9764706f, 0.8f);
+    style.Colors[ImGuiCol_HeaderActive] = ImVec4(0.25882354f, 0.5882353f, 0.9764706f, 1.0f);
+    style.Colors[ImGuiCol_Separator] = ImVec4(0.2f, 0.24705882f, 0.28627452f, 1.0f);
+    style.Colors[ImGuiCol_SeparatorHovered] = ImVec4(0.09803922f, 0.4f, 0.7490196f, 0.78f);
+    style.Colors[ImGuiCol_SeparatorActive] = ImVec4(0.09803922f, 0.4f, 0.7490196f, 1.0f);
+    style.Colors[ImGuiCol_ResizeGrip] = ImVec4(0.25882354f, 0.5882353f, 0.9764706f, 0.25f);
+    style.Colors[ImGuiCol_ResizeGripHovered] = ImVec4(0.25882354f, 0.5882353f, 0.9764706f, 0.67f);
+    style.Colors[ImGuiCol_ResizeGripActive] = ImVec4(0.25882354f, 0.5882353f, 0.9764706f, 0.95f);
+    style.Colors[ImGuiCol_Tab] = ImVec4(0.10980392f, 0.14901961f, 0.16862746f, 1.0f);
+    style.Colors[ImGuiCol_TabHovered] = ImVec4(0.25882354f, 0.5882353f, 0.9764706f, 0.8f);
+    style.Colors[ImGuiCol_TabActive] = ImVec4(0.2f, 0.24705882f, 0.28627452f, 1.0f);
+    style.Colors[ImGuiCol_TabUnfocused] = ImVec4(0.10980392f, 0.14901961f, 0.16862746f, 1.0f);
+    style.Colors[ImGuiCol_TabUnfocusedActive] = ImVec4(0.10980392f, 0.14901961f, 0.16862746f, 1.0f);
+    style.Colors[ImGuiCol_PlotLines] = ImVec4(0.60784316f, 0.60784316f, 0.60784316f, 1.0f);
+    style.Colors[ImGuiCol_PlotLinesHovered] = ImVec4(1.0f, 0.42745098f, 0.34901962f, 1.0f);
+    style.Colors[ImGuiCol_PlotHistogram] = ImVec4(0.8980392f, 0.69803923f, 0.0f, 1.0f);
+    style.Colors[ImGuiCol_PlotHistogramHovered] = ImVec4(1.0f, 0.6f, 0.0f, 1.0f);
+    style.Colors[ImGuiCol_TableHeaderBg] = ImVec4(0.1882353f, 0.1882353f, 0.2f, 1.0f);
+    style.Colors[ImGuiCol_TableBorderStrong] = ImVec4(0.30980393f, 0.30980393f, 0.34901962f, 1.0f);
+    style.Colors[ImGuiCol_TableBorderLight] = ImVec4(0.22745098f, 0.22745098f, 0.24705882f, 1.0f);
+    style.Colors[ImGuiCol_TableRowBg] = ImVec4(0.0f, 0.0f, 0.0f, 0.0f);
+    style.Colors[ImGuiCol_TableRowBgAlt] = ImVec4(1.0f, 1.0f, 1.0f, 0.06f);
+    style.Colors[ImGuiCol_TextSelectedBg] = ImVec4(0.25882354f, 0.5882353f, 0.9764706f, 0.35f);
+    style.Colors[ImGuiCol_DragDropTarget] = ImVec4(1.0f, 1.0f, 0.0f, 0.9f);
+    style.Colors[ImGuiCol_NavHighlight] = ImVec4(0.25882354f, 0.5882353f, 0.9764706f, 1.0f);
+    style.Colors[ImGuiCol_NavWindowingHighlight] = ImVec4(1.0f, 1.0f, 1.0f, 0.7f);
+    style.Colors[ImGuiCol_NavWindowingDimBg] = ImVec4(0.8f, 0.8f, 0.8f, 0.2f);
+    style.Colors[ImGuiCol_ModalWindowDimBg] = ImVec4(0.8f, 0.8f, 0.8f, 0.35f);
+}
 
 RND_Renderer::ImGuiOverlay::ImGuiOverlay(VkCommandBuffer cb, VkExtent2D fbRes, VkFormat fbFormat): m_outputRes(fbRes) {
     ImGui::CreateContext();
@@ -15,6 +109,32 @@ RND_Renderer::ImGuiOverlay::ImGuiOverlay(VkCommandBuffer cb, VkExtent2D fbRes, V
     InitSettings();
     ImGui::LoadIniSettingsFromDisk("BetterVR_settings.ini");
     ImGui::GetIO().ConfigFlags |= ImGuiConfigFlags_NavEnableGamepad;
+
+    ImFontConfig fontCfg{};
+    fontCfg.OversampleH = 8;
+    fontCfg.OversampleV = 8;
+    fontCfg.RasterizerMultiply = 1.0f;
+    fontCfg.FontDataOwnedByAtlas = false;
+    ImFont* textFont = ImGui::GetIO().Fonts->AddFontFromMemoryCompressedTTF(roboto_compressed_data, roboto_compressed_size, 15.0f, &fontCfg);
+
+    ImFontConfig iconCfg{};
+    iconCfg.MergeMode = true;
+    iconCfg.GlyphMinAdvanceX = 14.0f;
+    iconCfg.OversampleH = 8;
+    iconCfg.OversampleV = 8;
+    iconCfg.RasterizerMultiply = 1.0f;
+    iconCfg.FontDataOwnedByAtlas = false;
+    static const ImWchar icon_ranges[] = { ICON_MIN_KI, ICON_MAX_KI, 0 };
+    iconCfg.GlyphRanges = icon_ranges;
+    ImFont* iconFont = ImGui::GetIO().Fonts->AddFontFromMemoryCompressedTTF(kenney_compressed_data, kenney_compressed_size, 12.0f, &iconCfg);
+    if (iconFont == nullptr || textFont == nullptr) {
+        Log::print<ERROR>("Failed to load custom fonts for ImGui overlay, using default font");
+    }
+    else {
+        ImGui::GetIO().Fonts->Build();
+    }
+
+    SetupImGuiStyle();
 
     ImGui::GetIO().BackendFlags |= ImGuiBackendFlags_HasGamepad;
     ImPlot3D::CreateContext();
@@ -184,7 +304,7 @@ RND_Renderer::ImGuiOverlay::ImGuiOverlay(VkCommandBuffer cb, VkExtent2D fbRes, V
 
         // create VulkanTexture from image data
         HelpImage image;
-        image.m_image = new VulkanTexture{ (uint32_t)width, (uint32_t)height, VK_FORMAT_R8G8B8A8_UNORM, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT };
+        image.m_image = new VulkanTexture{ (uint32_t)width, (uint32_t)height, VK_FORMAT_R8G8B8A8_SRGB, VK_IMAGE_USAGE_SAMPLED_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT };
         image.m_image->vkTransitionLayout(cb, VK_IMAGE_LAYOUT_GENERAL);
         image.m_image->vkUpload(cb, img, width * height * 4);
         image.m_image->vkTransitionLayout(cb, VK_IMAGE_LAYOUT_GENERAL);
@@ -196,18 +316,15 @@ RND_Renderer::ImGuiOverlay::ImGuiOverlay(VkCommandBuffer cb, VkExtent2D fbRes, V
     };
 
     std::vector<HelpImage> page1;
-    page1.emplace_back(createHelpImage(BOTWcontrolScheme1_inputs, sizeof(BOTWcontrolScheme1_inputs)));
-    page1.emplace_back(createHelpImage(BOTWcontrolScheme_BodySlots, sizeof(BOTWcontrolScheme_BodySlots)));
+    page1.emplace_back(createHelpImage((stbi_uc const*)controls, sizeof(controls)));
     m_helpImagePages.push_back(page1);
 
     std::vector<HelpImage> page2;
-    page2.push_back(createHelpImage(BOTWcontrolScheme_Attack, sizeof(BOTWcontrolScheme_Attack)));
-    page2.push_back(createHelpImage(BOTWcontrolScheme_Shield, sizeof(BOTWcontrolScheme_Shield)));
+    page2.push_back(createHelpImage((stbi_uc const*)equip, sizeof(equip)));
     m_helpImagePages.push_back(page2);
 
     std::vector<HelpImage> page3;
-    page3.push_back(createHelpImage(BOTWcontrolScheme_Magnesis, sizeof(BOTWcontrolScheme_Magnesis)));
-    page3.push_back(createHelpImage(BOTWcontrolScheme_Whistle, sizeof(BOTWcontrolScheme_Whistle)));
+    page3.push_back(createHelpImage((stbi_uc const*)swing, sizeof(swing)));
     m_helpImagePages.push_back(page3);
 
     VulkanUtils::DebugPipelineBarrier(cb);
@@ -284,7 +401,7 @@ void RND_Renderer::ImGuiOverlay::Update() {
 
     // calculate a virtual resolution to keep UI size consistent
     float uiScaleFactor = (float)renderPhysicalHeight / 1080.0f;
-    if (uiScaleFactor < 0.1f) uiScaleFactor = 0.1f;
+    uiScaleFactor = std::max(uiScaleFactor, 0.1f);
 
     uiScaleFactor *= 2.0f;
 
@@ -379,7 +496,7 @@ void RND_Renderer::ImGuiOverlay::Render(long frameIdx, bool renderBackground) {
             ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
             ImGui::SetNextWindowPos(shouldCrop3DTo16_9 ? ImVec2(0, 0) : centerPos);
             ImGui::SetNextWindowSize(windowSize);
-            
+
             ImGui::Begin("3D Background", nullptr, FULLSCREEN_WINDOW_FLAGS);
             ImGui::Image((ImTextureID)frame.mainFramebufferDS, shouldCrop3DTo16_9 ? windowSize : squishedWindowSize, croppedUv0, croppedUv1);
             ImGui::End();
@@ -397,7 +514,7 @@ void RND_Renderer::ImGuiOverlay::Render(long frameIdx, bool renderBackground) {
         VRManager::instance().Hooks->DrawDebugOverlays();
     }
 
-    if ((renderBackground && GetSettings().performanceOverlay == 1) || GetSettings().performanceOverlay == 2) {
+    if (((renderBackground && GetSettings().performanceOverlay == 1) || GetSettings().performanceOverlay == 2) && !VRManager::instance().XR->m_isMenuOpen) {
         EntityDebugger::DrawFPSOverlay(renderer);
     }
 
@@ -428,22 +545,24 @@ void RND_Renderer::ImGuiOverlay::ProcessInputs(OpenXR::InputState& inputs) {
 
     // imgui wants us to only have state changes, and we also want to refiring DPAD inputs (used for moving the menu cursor) when held down
     constexpr float THRESHOLD_PRESS = 0.5f;
-    constexpr float THRESHOLD_RELEASE = 0.3f; 
+    constexpr float THRESHOLD_RELEASE = 0.3f;
     constexpr double REFIRE_DELAY = 0.4f;
 
     static bool dpadState[4] = { false };
-    static double lastRefireTime[6] = { 0.0 }; // 0-3 Dpad, 4 B, 5 A
+    static double lastRefireTime[8] = { 0.0 }; // 0-3 Dpad, 4 B, 5 A, 6 LB, 7 RB
     double currentTime = ImGui::GetTime();
 
     auto updateDpadState = [&](int idx, float val, bool positive) {
         bool isPressed = dpadState[idx];
         if (positive) {
             if (!isPressed && val >= THRESHOLD_PRESS) isPressed = true;
-            else if (isPressed && val <= THRESHOLD_RELEASE) isPressed = false;
+            else if (isPressed && val <= THRESHOLD_RELEASE)
+                isPressed = false;
         }
         else {
             if (!isPressed && val <= -THRESHOLD_PRESS) isPressed = true;
-            else if (isPressed && val >= -THRESHOLD_RELEASE) isPressed = false;
+            else if (isPressed && val >= -THRESHOLD_RELEASE)
+                isPressed = false;
         }
         dpadState[idx] = isPressed;
         return isPressed;
@@ -452,11 +571,11 @@ void RND_Renderer::ImGuiOverlay::ProcessInputs(OpenXR::InputState& inputs) {
     auto applyInput = [&](ImGuiKey key, bool isPressed, int idx) {
         if (isPressed) {
             if (currentTime - lastRefireTime[idx] >= REFIRE_DELAY || lastRefireTime[idx] == 0.0) {
-                 io.AddKeyEvent(key, true);
-                 lastRefireTime[idx] = currentTime;
+                io.AddKeyEvent(key, true);
+                lastRefireTime[idx] = currentTime;
             }
             else {
-                 io.AddKeyEvent(key, false);
+                io.AddKeyEvent(key, false);
             }
         }
         else {
@@ -473,6 +592,10 @@ void RND_Renderer::ImGuiOverlay::ProcessInputs(OpenXR::InputState& inputs) {
     // convert B/A to ImGui gamepad face buttons
     applyInput(ImGuiKey_GamepadFaceRight, backDown, 4);
     applyInput(ImGuiKey_GamepadFaceDown, confirmDown, 5);
+
+    // triggers for tab switching
+    applyInput(ImGuiKey_GamepadL1, inputs.inMenu.leftTrigger.currentState, 6);
+    applyInput(ImGuiKey_GamepadR1, inputs.inMenu.rightTrigger.currentState, 7);
 
     // prevent exiting menu if a popup or field is being edited
     if (ImGui::IsAnyItemActive() && ImGui::IsPopupOpen(NULL, ImGuiPopupFlags_AnyPopupId + ImGuiPopupFlags_AnyPopupLevel)) {
@@ -525,96 +648,206 @@ void RND_Renderer::ImGuiOverlay::DrawHelpMenu() {
     }
 
     ImVec2 fullWindowWidth = ImVec2(ImGui::GetIO().DisplaySize.x, ImGui::GetIO().DisplaySize.y);
-    ImVec2 windowWidth = fullWindowWidth * ImVec2(0.8f, 1.0f);
+    ImVec2 windowWidth = fullWindowWidth * ImVec2(0.75f, 1.0f);
+
+    // Layout helper
+    auto DrawSettingRow = [&](const char* label, auto drawWidget) {
+        ImGui::AlignTextToFramePadding();
+        ImGui::TextUnformatted(label);
+        ImGui::SameLine();
+
+        float startPos = windowWidth.x * 0.45f;
+        if (ImGui::GetCursorPosX() < startPos)
+            ImGui::SetCursorPosX(startPos);
+
+        ImGui::PushItemWidth(windowWidth.x * 0.50f);
+        drawWidget();
+        ImGui::PopItemWidth();
+    };
 
     ImGui::SetNextWindowPos(fullWindowWidth * 0.5f, ImGuiCond_Always, ImVec2(0.5f, 0.5f));
     ImGui::SetNextWindowSize(windowWidth, ImGuiCond_Always);
-    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0, 0));
+    ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
 
-    if (ImGui::Begin("BetterVR Settings & Help | Long-Press The X Button (or A button on left controller for Valve hmd) To Exit Or Press B##Settings", nullptr, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove)) {
+    if (ImGui::Begin("BetterVR Settings & Help##Settings", nullptr, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoNavFocus | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove)) {
         bool changed = false;
 
-        if (ImGui::BeginTabBar("HelpMenuTabs")) {
-            if (ImGui::BeginTabItem("Settings", nullptr, 0)) {
-                ImGui::Dummy(ImVec2(0.0f, 10.0f));
-                ImGui::Indent(10.0f);
-                ImGui::PushItemWidth(windowWidth.x * 0.5f);
+        ImGui::Indent(10.0f);
+        ImGui::Dummy(ImVec2(10.0f, 0.0f));
 
-                auto& settings = GetSettings();
+        float footerHeight = ImGui::GetFrameHeight() * 1.5f;
+        if (ImGui::BeginChild("Content", ImVec2(0, -footerHeight), ImGuiChildFlags_None, ImGuiWindowFlags_NoBackground)) {
+            if (ImGui::BeginTabBar("HelpMenuTabs")) {
+                if (ImGui::BeginTabItem("Settings", nullptr, 0)) {
+                    auto& settings = GetSettings();
 
-                ImGui::Separator();
-                ImGui::Text("Camera Mode");
-                int cameraMode = (int)settings.cameraMode.load();
-                if (ImGui::RadioButton("First Person", &cameraMode, 1)) { settings.cameraMode = CameraMode::FIRST_PERSON; changed = true; }
-                ImGui::SameLine();
-                if (ImGui::RadioButton("Third Person", &cameraMode, 0)) { settings.cameraMode = CameraMode::THIRD_PERSON; changed = true; }
+                    ImGui::Separator();
+                    int cameraMode = (int)settings.cameraMode.load();
+                    DrawSettingRow("Camera Mode", [&]() {
+                        if (ImGui::RadioButton("First Person (Recommended)", &cameraMode, 1)) {
+                            settings.cameraMode = CameraMode::FIRST_PERSON;
+                            changed = true;
+                        }
+                        ImGui::SameLine();
+                        if (ImGui::RadioButton("Third Person", &cameraMode, 0)) {
+                            settings.cameraMode = CameraMode::THIRD_PERSON;
+                            changed = true;
+                        }
+                    });
 
-                ImGui::Spacing();
-                ImGui::Separator();
-                ImGui::Text("Camera / Player Options");
-                if (cameraMode == 0) {
-                    float distance = settings.thirdPlayerDistance;
-                    if (ImGui::SliderFloat("Camera Distance", &distance, 0.4f, 1.1f, "%.2f")) {
-                        settings.thirdPlayerDistance = distance;
-                        changed = true;
+                    ImGui::Spacing();
+                    ImGui::Separator();
+                    ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetStyleColorVec4(ImGuiCol_HeaderActive));
+                    ImGui::Text("Camera / Player Options");
+                    ImGui::PopStyleColor();
+                    if (cameraMode == 0) {
+                        float distance = settings.thirdPlayerDistance;
+                        DrawSettingRow("Camera Distance", [&]() {
+                            if (ImGui::SliderFloat("##CameraDistance", &distance, 0.4f, 1.1f, "%.2f")) {
+                                settings.thirdPlayerDistance = distance;
+                                changed = true;
+                            }
+                        });
                     }
-                }
-                else {
-                    ImGui::Text("Player Height Offset");
-                    float height = settings.playerHeightOffset;
-                    std::string heightOffsetValueStr = std::format("{0}{1:.02f} meters / {0}{2:.02f} feet", (height > 0.0f ? "+" : ""), height, height * 3.28084f);
-                    if (ImGui::SliderFloat("Height Offset", &height, -0.5f, 1.0f, heightOffsetValueStr.c_str())) {
-                        settings.playerHeightOffset = height;
-                        changed = true;
+                    else {
+                        float height = settings.playerHeightOffset;
+                        std::string heightOffsetValueStr = std::format("{0}{1:.02f} meters / {0}{2:.02f} feet", (height > 0.0f ? "+" : ""), height, height * 3.28084f);
+                        DrawSettingRow("Height Offset", [&]() {
+                            ImGui::PushItemWidth(windowWidth.x * 0.35f);
+                            if (ImGui::SliderFloat("##HeightOffset", &height, -0.5f, 1.0f, heightOffsetValueStr.c_str())) {
+                                settings.playerHeightOffset = height;
+                                changed = true;
+                            }
+                            ImGui::PopItemWidth();
+                            ImGui::SameLine();
+                            if (ImGui::Button("Reset")) {
+                                settings.playerHeightOffset = 0.0f;
+                                changed = true;
+                            }
+                        });
+
+                        //bool leftHanded = settings.leftHanded;
+                        //if (ImGui::Checkbox("Left Handed Mode", &leftHanded)) {
+                        //    settings.leftHanded = leftHanded ? 1 : 0;
+                        //    changed = true;
+                        //}
                     }
-                    if (ImGui::Button("Reset Height")) {
-                        settings.playerHeightOffset = 0.0f;
-                        changed = true;
+
+                    ImGui::Spacing();
+                    ImGui::Separator();
+                    ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetStyleColorVec4(ImGuiCol_HeaderActive));
+                    ImGui::Text("Cutscenes");
+                    ImGui::PopStyleColor();
+
+                    int cutsceneMode = (int)settings.cutsceneCameraMode.load();
+                    int currentCutsceneModeIdx = cutsceneMode - 1;
+                    if (currentCutsceneModeIdx < 0) currentCutsceneModeIdx = 1;
+
+                    DrawSettingRow("Camera In Cutscenes", [&]() {
+                        if (ImGui::Combo("##CutsceneCamera", &currentCutsceneModeIdx, "First Person (Always)\0Optimal Settings (Mix Of Third/First)\0Third Person (Always)\0\0")) {
+                            settings.cutsceneCameraMode = (EventMode)(currentCutsceneModeIdx + 1);
+                            changed = true;
+                        }
+                    });
+
+                    bool blackBars = settings.useBlackBarsForCutscenes;
+                    DrawSettingRow("Cinematic Black Bars", [&]() {
+                        if (ImGui::Checkbox("##BlackBars", &blackBars)) {
+                            settings.useBlackBarsForCutscenes = blackBars ? 1 : 0;
+                            changed = true;
+                        }
+                    });
+
+                    ImGui::Spacing();
+                    ImGui::Separator();
+                    ImGui::PushStyleColor(ImGuiCol_Text, ImGui::GetStyleColorVec4(ImGuiCol_HeaderActive));
+                    ImGui::Text("UI");
+                    ImGui::PopStyleColor();
+                    if (cameraMode == 1) {
+                        bool guiFollow = settings.uiFollowsGaze;
+                        DrawSettingRow("UI Follows View", [&]() {
+                            if (ImGui::Checkbox("##UIFollow", &guiFollow)) {
+                                settings.uiFollowsGaze = guiFollow ? 1 : 0;
+                                changed = true;
+                            }
+                        });
                     }
 
-                    //bool leftHanded = settings.leftHanded;
-                    //if (ImGui::Checkbox("Left Handed Mode", &leftHanded)) {
-                    //    settings.leftHanded = leftHanded ? 1 : 0;
-                    //    changed = true;
-                    //}
-                }
+                    if (ImGui::CollapsingHeader("Advanced Settings")) {
+                        bool crop16x9 = settings.cropFlatTo16x9;
+                        DrawSettingRow("Crop VR Image To 16:9", [&]() {
+                            if (ImGui::Checkbox("##Crop16x9", &crop16x9)) {
+                                settings.cropFlatTo16x9 = crop16x9 ? 1 : 0;
+                                changed = true;
+                            }
+                        });
 
-                ImGui::Spacing();
-                ImGui::Separator();
-                ImGui::Text("Cutscenes");
-                int cutsceneMode = (int)settings.cutsceneCameraMode.load();
-                int currentCutsceneModeIdx = cutsceneMode - 1;
-                if (currentCutsceneModeIdx < 0) currentCutsceneModeIdx = 1;
-                if (ImGui::Combo("Camera In Cutscenes", &currentCutsceneModeIdx, "First Person (Always)\0Optimal Settings (Mix Of Third/First)\0Third Person (Always)\0\0")) {
-                    settings.cutsceneCameraMode = (EventMode)(currentCutsceneModeIdx + 1);
-                    changed = true;
-                }
+                        bool debugOverlay = settings.ShowDebugOverlay();
+                        DrawSettingRow("Show Debug Overlay", [&]() {
+                            if (ImGui::Checkbox("##DebugOverlay", &debugOverlay)) {
+                                settings.enableDebugOverlay = debugOverlay ? 1 : 0;
+                                changed = true;
+                            }
+                        });
 
-                bool blackBars = settings.useBlackBarsForCutscenes;
-                if (ImGui::Checkbox("Cinematic Black Bars", &blackBars)) {
-                    settings.useBlackBarsForCutscenes = blackBars ? 1 : 0;
-                    changed = true;
-                }
+                        if (VRManager::instance().XR->m_capabilities.isOculusLinkRuntime) {
+                            int angularFix = (int)settings.buggyAngularVelocity.load();
+                            const char* angularOptions[] = { "Auto (Oculus Link)", "Forced On", "Forced Off" };
+                            if (angularFix < 0 || angularFix > 2) angularFix = 0;
 
-                ImGui::Spacing();
-                ImGui::Separator();
-                ImGui::Text("UI");
-                if (cameraMode == 1) {
-                    bool guiFollow = settings.uiFollowsGaze;
-                    if (ImGui::Checkbox("UI Follows View", &guiFollow)) {
-                        settings.uiFollowsGaze = guiFollow ? 1 : 0;
-                        changed = true;
+                            DrawSettingRow("Angular Velocity Fixer", [&]() {
+                                if (ImGui::Combo("##AngularVelocity", &angularFix, angularOptions, 3)) {
+                                    settings.buggyAngularVelocity = (AngularVelocityFixerMode)angularFix;
+                                    changed = true;
+                                }
+                            });
+                        }
+                        else {
+                            settings.buggyAngularVelocity = AngularVelocityFixerMode::AUTO;
+                        }
                     }
+
+                    ImGui::EndTabItem();
+                }
+
+                if (ImGui::BeginTabItem("Control Scheme Guide/Help", nullptr, 0)) {
+                    ImGui::PushItemWidth(windowWidth.x * 0.5f);
+
+                    for (const auto& imagePage : m_helpImagePages) {
+                        for (const auto& image : imagePage) {
+                            ImGui::PushID(&image);
+                            float availWidth = ImGui::GetContentRegionAvail().x;
+                            float imageHeight = (availWidth) * ((float)image.m_image->GetHeight() / (float)image.m_image->GetWidth());
+                            ImVec2 imageSize = ImVec2(availWidth, imageHeight);
+                            ImVec2 p = ImGui::GetCursorPos();
+                            ImGui::Selectable("##imgButton", false, 0, imageSize);
+                            ImGui::SetCursorPos(p);
+                            ImGui::Image((ImTextureID)image.m_imageDS, imageSize);
+                            ImGui::PopID();
+                        }
+                    }
+
+                    ImGui::PopItemWidth();
+                    ImGui::EndTabItem();
+                }
+                
+                if (ImGui::BeginTabItem("FPS Overlay", nullptr, 0)) {
+                    ImGui::Dummy(ImVec2(0.0f, 10.0f));
+
+                    auto& settings = GetSettings();
 
                     int performanceOverlay = settings.performanceOverlay;
-                    const char* fpsOverlayOptions[] = { "Disable (no overhead)", "Only show in Cemu window (negligible overhead)", "Show in both Cemu and VR (small performance overhead)" };
+                    const char* fpsOverlayOptions[] = { "Disable", "Only show in Cemu window", "Show in both Cemu and VR" };
                     if (performanceOverlay < 0 || performanceOverlay > 2) performanceOverlay = 0;
-                    if (ImGui::Combo("Show FPS/Performance Overlay", &performanceOverlay, fpsOverlayOptions, 3)) {
-                        settings.performanceOverlay = performanceOverlay;
-                        changed = true;
-                    }
 
-                    if (performanceOverlay >= 1) {
+                    DrawSettingRow("Show FPS Overlay", [&]() {
+                        if (ImGui::Combo("##FPSOverlay", &performanceOverlay, fpsOverlayOptions, 3)) {
+                            settings.performanceOverlay = performanceOverlay;
+                            changed = true;
+                        }
+                    });
+
+                    if (performanceOverlay >= 0) {
                         static const int freqOptions[] = { 30, 60, 72, 80, 90, 120, 144 };
                         int currentFreq = (int)settings.performanceOverlayFrequency.load();
                         int freqIdx = 5; // Default to 90
@@ -625,76 +858,44 @@ void RND_Renderer::ImGuiOverlay::DrawHelpMenu() {
                             }
                         }
 
-                        if (ImGui::SliderInt("Headset Refresh Rate (Used For Visualizing Overhead)", &freqIdx, 0, (int)std::size(freqOptions) - 1, std::format("{} Hz", freqOptions[freqIdx]).c_str())) {
-                            settings.performanceOverlayFrequency = freqOptions[freqIdx];
-                            changed = true;
-                        }
+                        DrawSettingRow("Refresh Rate Of VR Headset For Graph", [&]() {
+                            if (ImGui::SliderInt("##RefreshRate", &freqIdx, 0, (int)std::size(freqOptions) - 1, std::format("{} Hz", freqOptions[freqIdx]).c_str())) {
+                                settings.performanceOverlayFrequency = freqOptions[freqIdx];
+                                changed = true;
+                            }
+                        });
+
+                        ImGui::Dummy(ImVec2(0.0f, 10.0f));
+                        // draw the FPS overlay inside of the menu with an explanation
+                        EntityDebugger::DrawFPSOverlayContent(VRManager::instance().XR->GetRenderer(), true);
                     }
 
+                    ImGui::EndTabItem();
                 }
 
-                if (ImGui::CollapsingHeader("Advanced Settings")) {
-                    bool crop16x9 = settings.cropFlatTo16x9;
-                    if (ImGui::Checkbox("Crop VR Image To 16:9 Image Inside Cemu Window", &crop16x9)) {
-                        settings.cropFlatTo16x9 = crop16x9 ? 1 : 0;
-                        changed = true;
-                    }
+                ImGui::EndTabBar();
+            }
+            ImGui::EndChild();
 
-                    bool debugOverlay = settings.ShowDebugOverlay();
-                    if (ImGui::Checkbox("Show Debug Overlay (very experimental, will cause issues!)", &debugOverlay)) {
-                        settings.enableDebugOverlay = debugOverlay ? 1 : 0;
-                        changed = true;
-                    }
-
-                    if (VRManager::instance().XR->m_capabilities.isOculusLinkRuntime) {
-                        int angularFix = (int)settings.buggyAngularVelocity.load();
-                        const char* angularOptions[] = { "Auto (Oculus Link)", "Forced On", "Forced Off" };
-                        if (angularFix < 0 || angularFix > 2) angularFix = 0;
-                        if (ImGui::Combo("Angular Velocity Fixer", &angularFix, angularOptions, 3)) {
-                            settings.buggyAngularVelocity = (AngularVelocityFixerMode)angularFix;
-                            changed = true;
-                        }
-                    }
-                    else {
-                        settings.buggyAngularVelocity = AngularVelocityFixerMode::AUTO;
-                    }
+            ImGui::Separator();
+            {
+                ImGui::Spacing();
+                const char* navText = ICON_KI_STICK_LEFT_TOP " Navigate      " ICON_KI_BUTTON_A " Select      " ICON_KI_BUTTON_B " Exit      " ICON_KI_BUTTON_L " " ICON_KI_BUTTON_R " Tabs";
+                float textWidth = ImGui::CalcTextSize(navText).x;
+                float availW = ImGui::GetContentRegionAvail().x;
+                if (availW > textWidth) {
+                    ImGui::SetCursorPosX(ImGui::GetCursorPosX() + (availW - textWidth) * 0.5f);
                 }
-
-                ImGui::PopItemWidth();
-                ImGui::Unindent(10.0f);
-                
-                ImGui::EndTabItem();
+                ImGui::TextUnformatted(navText);
             }
 
-            if (ImGui::BeginTabItem("Control Scheme Guide/Help", nullptr, 0)) {
-                ImGui::PushItemWidth(windowWidth.x * 0.5f);
-
-                for (const auto& imagePage : m_helpImagePages) {
-                    for (const auto& image : imagePage) {
-                        ImGui::PushID(&image);
-                        float imageHeightAtFullWidth = (windowWidth.x) * ((float)image.m_image->GetHeight() / (float)image.m_image->GetWidth());
-                        ImVec2 imageSize = ImVec2(windowWidth.x, imageHeightAtFullWidth);
-                        ImVec2 p = ImGui::GetCursorPos();
-                        ImGui::Selectable("##imgButton", false, 0, imageSize);
-                        ImGui::SetCursorPos(p);
-                        ImGui::Image((ImTextureID)image.m_imageDS, imageSize);
-                        ImGui::PopID();
-                    }
-                }
-
-                ImGui::PopItemWidth();
-                ImGui::EndTabItem();
+            if (changed) {
+                ImGui::SaveIniSettingsToDisk("BetterVR_settings.ini");
             }
-
-            ImGui::EndTabBar();
         }
-
-        if (changed) {
-            ImGui::SaveIniSettingsToDisk("BetterVR_settings.ini");
-        }
+        ImGui::End();
+        ImGui::PopStyleVar();
     }
-    ImGui::End();
-    ImGui::PopStyleVar();
 }
 
 void RND_Renderer::ImGuiOverlay::Draw3DLayerAsBackground(VkCommandBuffer cb, VkImage srcImage, float aspectRatio, long frameIdx) {
@@ -709,7 +910,6 @@ void RND_Renderer::ImGuiOverlay::DrawHUDLayerAsBackground(VkCommandBuffer cb, Vk
 
     frame.hudFramebuffer->vkCopyFromImage(cb, srcImage);
     frame.hudWithoutAlphaFramebuffer->vkCopyFromImage(cb, srcImage);
-
 }
 
 void RND_Renderer::ImGuiOverlay::DrawAndCopyToImage(VkCommandBuffer cb, VkImage destImage, long frameIdx) {
