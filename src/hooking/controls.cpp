@@ -205,7 +205,8 @@ void handleLeftHandInGameInput(
     Direction leftStickDir,
     XrActionStateVector2f& leftStickSource,
     XrActionStateVector2f& rightStickSource,
-    const std::chrono::steady_clock::time_point& now
+    const std::chrono::steady_clock::time_point& now,
+    float dt
 ) {
     constexpr std::chrono::milliseconds INPUT_DELAY(400);
     
@@ -240,8 +241,11 @@ void handleLeftHandInGameInput(
         rumbleMgr->enqueueInputsRumbleCommand(leftRumbleFall);
 
     // Handle Parry gesture
+    float ACCELERATION_THRESHOLD = 35.0f;
     auto handVelocity = glm::length(ToGLM(inputs.shared.poseVelocity[0].linearVelocity));
-    if (handVelocity > 4.0f && gameState.left_equip_type == EquipType::Shield && leftGesture.isNearChestHeight) {
+    float acceleration = (handVelocity - gameState.previous_left_hand_velocity) / dt;
+    gameState.previous_left_hand_velocity = handVelocity;
+    if (acceleration > ACCELERATION_THRESHOLD && gameState.left_equip_type == EquipType::Shield && gameState.is_shield_guarding) {
         buttonHold |= VPAD_BUTTON_A;
         rumbleMgr->enqueueInputsRumbleCommand(leftRumbleFall);
     }
@@ -368,6 +372,7 @@ void handleLeftHandInGameInput(
         }
     }
 
+    // Master Sword QTE fix
     if (isHandNotOverAnySlot(leftGesture) && isGrabPressedLong) {
         if (!gameState.prevent_grab_inputs) {
             buttonHold |= VPAD_BUTTON_A;
@@ -534,6 +539,7 @@ void handleRightHandInGameInput(
         }
     }
 
+    // Master Sword QTE fix
     if (isHandNotOverAnySlot(rightGesture) && isGrabPressedLong) {
         if (!gameState.prevent_grab_inputs) {
             buttonHold |= VPAD_BUTTON_A;
@@ -684,6 +690,8 @@ void handleMenuInput(
 
 }
 
+XrTime prev_sample = 0;
+
 void CemuHooks::hook_InjectXRInput(PPCInterpreter_t* hCPU) {
     hCPU->instructionPointer = hCPU->sprNew.LR;
 
@@ -735,6 +743,8 @@ void CemuHooks::hook_InjectXRInput(PPCInterpreter_t* hCPU) {
     // fetch input state
     OpenXR::InputState inputs = VRManager::instance().XR->m_input.load();
     inputs.inGame.drop_weapon[0] = inputs.inGame.drop_weapon[1] = false;
+
+    float dt = (float)(inputs.shared.inputTime - prev_sample) / 1000000000.0f;
 
     // fetch game state
     auto gameState = VRManager::instance().XR->m_gameState.load(); 
@@ -947,7 +957,7 @@ void CemuHooks::hook_InjectXRInput(PPCInterpreter_t* hCPU) {
         
         // Hand-specific input
         handleLeftHandInGameInput(newXRBtnHold, inputs, gameState, leftGesture, 
-                                   leftJoystickDir, leftStickSource, rightStickSource, now);
+                                   leftJoystickDir, leftStickSource, rightStickSource, now, dt);
         handleRightHandInGameInput(newXRBtnHold, inputs, gameState, rightGesture, rightStickSource,
                                     rightJoystickDir, now);
         
@@ -1042,6 +1052,8 @@ void CemuHooks::hook_InjectXRInput(PPCInterpreter_t* hCPU) {
 
     VRManager::instance().XR->m_gameState.store(gameState);
     VRManager::instance().XR->m_input.store(inputs);
+
+    prev_sample = inputs.shared.inputTime;
 }
 
 

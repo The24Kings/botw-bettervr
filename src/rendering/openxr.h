@@ -152,7 +152,7 @@ public:
         bool is_climbing = false;
         bool is_paragliding = false;
 
-        float left_hand_velocity = 0.0f;
+        float previous_left_hand_velocity = 0.0f;
         glm::fvec3 stored_left_hand_position = glm::fvec3(0.0f, 0.0f, 0.0f);
         bool left_hand_position_stored = false;
         glm::fvec3 stored_right_hand_position = glm::fvec3(0.0f, 0.0f, 0.0f);
