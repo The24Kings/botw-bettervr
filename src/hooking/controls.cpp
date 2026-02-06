@@ -706,6 +706,7 @@ void CemuHooks::hook_InjectXRInput(PPCInterpreter_t* hCPU) {
 
     // todo: revert this to unblock gamepad input
     readMemory(vpadStatusOffset, &vpadStatus);
+    const VPADStatus rawVpadStatus = vpadStatus;
 
     static auto startBtnLastTime = std::chrono::steady_clock::now();
     static bool startBtnWasDown = false;
@@ -786,10 +787,11 @@ void CemuHooks::hook_InjectXRInput(PPCInterpreter_t* hCPU) {
     }
 
     // allow the gamepad inputs to control the imgui overlay
-    imguiOverlay->ProcessInputs(inputs);
+    imguiOverlay->ProcessInputs(inputs, rawVpadStatus);
 
     // ignore stick input when the help menu is open
     if (isMenuOpen) {
+        vpadStatus = {};
         leftStickSource.currentState = { 0.0f, 0.0f };
         rightStickSource.currentState = { 0.0f, 0.0f };
         leftJoystickDir = Direction::None;
