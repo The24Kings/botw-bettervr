@@ -259,7 +259,7 @@ static bool isFaceBone(const std::string_view& boneName) {
 
 static Skeleton s_skeleton;
 static bool s_skeletonParsed = false;
-static glm::vec3 s_manualBodyOffset = glm::vec3(0.0f, 0.0f, -0.125f);
+static glm::vec3 s_manualBodyOffset = glm::vec3(0.0f, 0.0f, -0.075f);
 static glm::mat4 s_handCorrectionRotationLeft = glm::mat4(1.0f);
 static glm::mat4 s_handCorrectionRotationRight = glm::mat4(1.0f);
 
